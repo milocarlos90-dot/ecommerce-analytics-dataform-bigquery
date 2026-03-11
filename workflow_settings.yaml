@@ -1,4 +1,4 @@
 defaultProject: ecommerce-analytics-dataform
-defaultDataset: dataform
+defaultDataset: analytics_dev
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.42

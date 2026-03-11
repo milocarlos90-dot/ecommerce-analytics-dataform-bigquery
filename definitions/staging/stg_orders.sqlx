@@ -1,0 +1,22 @@
+config {
+  type: "view",
+  assertions: {
+    uniqueKey: ["order_id"],
+    nonNull: ["order_id", "created_at"]
+  }
+}
+
+SELECT
+  CAST(order_id AS int64) AS order_id,
+  CAST(user_id AS int64) AS customer_id,
+  CAST(status AS string) AS status,
+  CAST(gender AS string) AS gender,
+  CAST(created_at AS timestamp) AS created_at,
+  CAST(returned_at AS timestamp) AS returned_at,
+  CAST(shipped_at AS timestamp) AS shipped_at,
+  CAST(delivered_at AS timestamp) AS delivered_at,
+  CAST(num_of_item AS int64) AS number_of_items
+FROM ${ref("orders")}
+
+
+
