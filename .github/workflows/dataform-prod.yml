@@ -35,10 +35,19 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: |
-          echo $GCP_SA_KEY | python3 -c "
-          import json,sys
-          sa=json.load(sys.stdin)
-          print(json.dumps({'projectId':sa['project_id'],'credentials':{'client_email':sa['client_email'],'private_key':sa['private_key']}}))" > .df-credentials.json
+          python3 << 'EOF'
+          import json, os
+          sa = json.loads(os.environ['GCP_SA_KEY'])
+          df_creds = {
+            "projectId": sa["project_id"],
+            "credentials": {
+              "client_email": sa["client_email"],
+              "private_key": sa["private_key"]
+            }
+          }
+          with open(".df-credentials.json", "w") as f:
+            json.dump(df_creds, f)
+          EOF
 
       - name: Run Dataform
         run: dataform run --project-dir .
