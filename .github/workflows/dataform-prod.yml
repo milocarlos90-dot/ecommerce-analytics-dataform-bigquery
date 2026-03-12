@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  run:
+  dataform_run:
     runs-on: ubuntu-latest
 
     steps:
