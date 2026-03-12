@@ -1,4 +1,4 @@
-name: Dataform Production Run
+name: Dataform Production
 
 on:
   push:
@@ -17,12 +17,15 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Verify Google Cloud authentication
         run: gcloud auth list
-        
+
       - name: Show active gcloud project
         run: gcloud config list
-          
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -32,4 +35,4 @@ jobs:
         run: npm install -g @dataform/cli
 
       - name: Run Dataform
-        run: dataform run
+        run: dataform run --project-dir .
