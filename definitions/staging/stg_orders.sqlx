@@ -1,14 +1,27 @@
 config {
   type: "view",
+  description: "Staged orders data from TheLook ecommerce. One row per order.",
+  columns: {
+    order_id: "Primary key. Unique identifier for each order.",
+    user_id: "Foreign key to stg_users. Identifies the user who placed the order.",
+    status: "Current status of the order e.g. complete, cancelled, returned.",
+    gender: "Gender of the customer who placed the order.",
+    created_at: "Timestamp when the order was created.",
+    returned_at: "Timestamp when the order was returned. Null if not returned.",
+    shipped_at: "Timestamp when the order was shipped. Null if not yet shipped.",
+    delivered_at: "Timestamp when the order was delivered. Null if not yet delivered.",
+    number_of_items: "Total number of items included in the order."
+  },
   assertions: {
     uniqueKey: ["order_id"],
     nonNull: ["order_id", "created_at"]
-  }
+  },
+  tags: ["staging"]
 }
 
 SELECT
   CAST(order_id AS int64) AS order_id,
-  CAST(user_id AS int64) AS customer_id,
+  CAST(user_id AS int64) AS user_id,
   CAST(status AS string) AS status,
   CAST(gender AS string) AS gender,
   CAST(created_at AS timestamp) AS created_at,
@@ -17,4 +30,3 @@ SELECT
   CAST(delivered_at AS timestamp) AS delivered_at,
   CAST(num_of_item AS int64) AS number_of_items
 FROM ${ref("orders")}
----- testing 2

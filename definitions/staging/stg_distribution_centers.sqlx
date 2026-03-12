@@ -1,0 +1,25 @@
+config {
+  type: "view",
+  description: "Staged distribution centers data from TheLook ecommerce. One row per distribution center.",
+  columns: {
+    distribution_center_id: "Primary key. Unique identifier for each distribution center.",
+    distribution_center_name: "Name of the distribution center.",
+    distribution_center_latitude: "Geographic latitude of the distribution center.",
+    distribution_center_longitude: "Geographic longitude of the distribution center.",
+    distribution_center_geom: "Geographic point representing the distribution center location."
+  },
+  assertions: {
+    uniqueKey: ["distribution_center_id"],
+    nonNull: ["distribution_center_id", "distribution_center_name"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS distribution_center_id,
+  CAST(name AS string) AS distribution_center_name,
+  CAST(latitude AS float64) AS distribution_center_latitude,
+  CAST(longitude AS float64) AS distribution_center_longitude,
+  distribution_center_geom AS distribution_center_geom
+FROM
+  ${ref("distribution_centers")}

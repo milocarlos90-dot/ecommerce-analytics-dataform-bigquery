@@ -1,0 +1,41 @@
+config {
+  type: "view",
+  description: "Staged events data from TheLook ecommerce. One row per event.",
+  columns: {
+    event_id: "Primary key. Unique identifier for each event.",
+    user_id: "Foreign key to stg_users. Identifies the user who triggered the event.",
+    session_sequence_number: "Position of the event within the session sequence.",
+    session_id: "Identifier for the session in which the event occurred.",
+    created_at: "Timestamp when the event occurred.",
+    ip_address: "IP address of the user at the time of the event.",
+    city: "City where the event was triggered.",
+    state: "State where the event was triggered.",
+    postal_code: "Postal code where the event was triggered.",
+    browser: "Browser used by the user at the time of the event.",
+    traffic_source: "Marketing channel through which the user arrived.",
+    uri: "URI of the page where the event was triggered.",
+    event_type: "Type of event e.g. purchase, page view, add to cart."
+  },
+  assertions: {
+    uniqueKey: ["event_id"],
+    nonNull: ["event_id", "created_at", "event_type"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS event_id,
+  CAST(user_id AS int64) AS user_id,
+  CAST(sequence_number AS int64) AS session_sequence_number,
+  CAST(session_id AS string) AS session_id,
+  CAST(created_at AS timestamp) AS created_at,
+  CAST(ip_address AS string) AS ip_address,
+  CAST(city AS string) AS city,
+  CAST(state AS string) AS state,
+  CAST(postal_code AS string) AS postal_code,
+  CAST(browser AS string) AS browser,
+  CAST(traffic_source AS string) AS traffic_source,
+  CAST(uri AS string) AS uri,
+  CAST(event_type AS string) AS event_type
+FROM
+  ${ref("events")}

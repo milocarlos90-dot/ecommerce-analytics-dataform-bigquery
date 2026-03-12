@@ -1,0 +1,10 @@
+config {
+  type: "assertion",
+  tags: ["staging"]
+}
+
+SELECT order_item_id, order_id
+FROM ${ref("stg_order_items")}
+WHERE order_id NOT IN (
+  SELECT order_id FROM ${ref("stg_orders")}
+)

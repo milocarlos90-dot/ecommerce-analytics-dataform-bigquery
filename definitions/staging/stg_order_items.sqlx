@@ -1,0 +1,37 @@
+config {
+  type: "view",
+  description: "Staged order items data from TheLook ecommerce. One row per order item.",
+  columns: {
+    order_item_id: "Primary key. Unique identifier for each order item.",
+    order_id: "Foreign key to stg_orders. Identifies the order this item belongs to.",
+    user_id: "Foreign key to stg_users. Identifies the user who purchased the item.",
+    product_id: "Foreign key to stg_products. Identifies the product purchased.",
+    inventory_item_id: "Foreign key to stg_inventory_items. Identifies the specific inventory item sold.",
+    status: "Current status of the order item e.g. complete, cancelled, returned.",
+    created_at: "Timestamp when the order item was created.",
+    shipped_at: "Timestamp when the order item was shipped. Null if not yet shipped.",
+    delivered_at: "Timestamp when the order item was delivered. Null if not yet delivered.",
+    returned_at: "Timestamp when the order item was returned. Null if not returned.",
+    sale_price: "Sale price of the item rounded to 2 decimal places."
+  },
+  assertions: {
+    uniqueKey: ["order_item_id"],
+    nonNull: ["order_item_id", "order_id", "sale_price"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS order_item_id,
+  CAST(order_id AS int64) AS order_id,
+  CAST(user_id AS int64) AS user_id,
+  CAST(product_id AS int64) AS product_id,
+  CAST(inventory_item_id AS int64) AS inventory_item_id,
+  CAST(status AS string) AS status,
+  CAST(created_at AS timestamp) AS created_at,
+  CAST(shipped_at AS timestamp) AS shipped_at,
+  CAST(delivered_at AS timestamp) AS delivered_at,
+  CAST(returned_at AS timestamp) AS returned_at,
+  ROUND(CAST(sale_price AS numeric), 2) AS sale_price
+FROM
+  ${ref("order_items")}

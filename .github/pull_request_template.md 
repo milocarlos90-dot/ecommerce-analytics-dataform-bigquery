@@ -1,0 +1,15 @@
+## What changed
+<!-- Brief description of models added, modified or removed -->
+
+## Type of change
+- [ ] New model
+- [ ] Modified existing model
+- [ ] Bug fix
+- [ ] Refactor
+- [ ] Documentation
+
+## Checklist
+- [ ] Compiled graph checked with no errors
+- [ ] Assertions passing
+- [ ] Column descriptions added
+- [ ] README updated if needed
