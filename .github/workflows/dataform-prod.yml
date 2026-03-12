@@ -32,8 +32,13 @@ jobs:
         run: npm install -g @dataform/cli
 
       - name: Create Dataform credentials file
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: |
-          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > .df-credentials.json
+          echo $GCP_SA_KEY | python3 -c "
+          import json,sys
+          sa=json.load(sys.stdin)
+          print(json.dumps({'projectId':sa['project_id'],'credentials':{'client_email':sa['client_email'],'private_key':sa['private_key']}}))" > .df-credentials.json
 
       - name: Run Dataform
         run: dataform run --project-dir .
