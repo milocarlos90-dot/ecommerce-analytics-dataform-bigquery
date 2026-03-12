@@ -1,13 +1,10 @@
 name: Dataform CI
-
 on:
   pull_request:
     branches: [ main ]
-
 jobs:
   dataform_ci:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,5 +17,9 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
+      - name: Create Dataform credentials file
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > .df-credentials.json
+
       - name: Compile Dataform project
-        run: dataform compile --no-credentials
+        run: dataform compile
