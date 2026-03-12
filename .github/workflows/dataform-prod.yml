@@ -33,18 +33,7 @@ jobs:
 
       - name: Create Dataform credentials file
         run: |
-          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' | python3 -c "
-          import json, sys
-          sa = json.load(sys.stdin)
-          df_creds = {
-            'projectId': sa['project_id'],
-            'credentials': {
-              'client_email': sa['client_email'],
-              'private_key': sa['private_key']
-            }
-          }
-          print(json.dumps(df_creds))
-          " > .df-credentials.json
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > .df-credentials.json
 
       - name: Run Dataform
         run: dataform run --project-dir .

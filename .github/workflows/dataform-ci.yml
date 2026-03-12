@@ -17,9 +17,5 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
-      - name: Create Dataform credentials file
-        run: |
-          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > .df-credentials.json
-
       - name: Compile Dataform project
-        run: dataform compile
+        run: dataform compile --no-credentials
