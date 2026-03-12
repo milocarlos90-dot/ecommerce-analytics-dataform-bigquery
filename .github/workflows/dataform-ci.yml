@@ -20,8 +20,5 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
-      - name: Install project dependencies
-        run: dataform install
-
       - name: Compile project
         run: dataform compile
