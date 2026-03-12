@@ -17,6 +17,12 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
+      - name: Verify Google Cloud authentication
+        run: gcloud auth list
+        
+      - name: Show active gcloud project
+        run: gcloud config list
+          
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
