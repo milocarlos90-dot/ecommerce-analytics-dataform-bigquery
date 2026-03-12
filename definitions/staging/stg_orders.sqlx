@@ -17,3 +17,4 @@ SELECT
   CAST(delivered_at AS timestamp) AS delivered_at,
   CAST(num_of_item AS int64) AS number_of_items
 FROM ${ref("orders")}
+---- testing 2
