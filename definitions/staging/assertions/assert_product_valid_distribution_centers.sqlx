@@ -1,0 +1,10 @@
+config {
+  type: "assertion",
+  tags: ["staging"]
+}
+
+SELECT product_id, distribution_center_id
+FROM ${ref("stg_products")}
+WHERE distribution_center_id NOT IN (
+  SELECT distribution_center_id FROM ${ref("stg_distribution_centers")}
+)

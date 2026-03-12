@@ -1,0 +1,47 @@
+config {
+  type: "view",
+  description: "Staged users data from TheLook ecommerce. One row per user.",
+  columns: {
+    user_id: "Primary key. Unique identifier for each user.",
+    first_name: "User's first name.",
+    last_name: "User's last name.",
+    email: "User's email address.",
+    age: "User's age in years.",
+    gender: "User's gender.",
+    state: "State where the user is located.",
+    street_address: "User's street address.",
+    postal_code: "User's postal code.",
+    city: "City where the user is located.",
+    country: "Country where the user is located.",
+    latitude: "Geographic latitude of the user's location.",
+    longitude: "Geographic longitude of the user's location.",
+    traffic_source: "Marketing channel through which the user was acquired.",
+    created_at: "Timestamp when the user account was created.",
+    customer_geography: "Geographic point representing the user's location."
+  },
+  assertions: {
+    uniqueKey: ["user_id"],
+    nonNull: ["user_id", "created_at"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS user_id,
+  CAST(first_name AS string) AS first_name,
+  CAST(last_name AS string) AS last_name,
+  CAST(email AS string) AS email,
+  CAST(age AS int64) AS age,
+  CAST(gender AS string) AS gender,
+  CAST(state AS string) AS state,
+  CAST(street_address AS string) AS street_address,
+  CAST(postal_code AS string) AS postal_code,
+  CAST(city AS string) AS city,
+  CAST(country AS string) AS country,
+  CAST(latitude AS float64) AS latitude,
+  CAST(longitude AS float64) AS longitude,
+  CAST(traffic_source AS string) AS traffic_source,
+  CAST(created_at AS timestamp) AS created_at,
+  user_geom AS customer_geography
+FROM
+  ${ref("users")}

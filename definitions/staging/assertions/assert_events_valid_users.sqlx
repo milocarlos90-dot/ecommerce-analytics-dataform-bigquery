@@ -1,0 +1,10 @@
+config {
+  type: "assertion",
+  tags: ["staging"]
+}
+
+SELECT event_id, user_id
+FROM ${ref("stg_events")}
+WHERE user_id NOT IN (
+  SELECT user_id FROM ${ref("stg_users")}
+)

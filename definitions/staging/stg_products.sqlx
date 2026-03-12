@@ -1,0 +1,33 @@
+config {
+  type: "view",
+  description: "Staged products data from TheLook ecommerce. One row per product.",
+  columns: {
+    product_id: "Primary key. Unique identifier for each product.",
+    cost: "Cost price of the product rounded to 2 decimal places.",
+    category: "Product category e.g. tops, jeans, accessories.",
+    product_name: "Name of the product.",
+    brand: "Brand of the product.",
+    retail_price: "Retail price of the product rounded to 2 decimal places.",
+    department: "Department the product belongs to e.g. mens, womens.",
+    sku: "Stock keeping unit identifier for the product.",
+    distribution_center_id: "Foreign key to stg_distribution_centers. Identifies where the product is stocked."
+  },
+  assertions: {
+    uniqueKey: ["product_id"],
+    nonNull: ["product_id", "cost", "retail_price","distribution_center_id"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS product_id,
+  ROUND(CAST(cost AS numeric), 2) AS cost,
+  CAST(category AS string) AS category,
+  CAST(name AS string) AS product_name,
+  CAST(brand AS string) AS brand,
+  ROUND(CAST(retail_price AS numeric), 2) AS retail_price,
+  CAST(department AS string) AS department,
+  CAST(sku AS string) AS sku,
+  CAST(distribution_center_id AS int64) AS distribution_center_id
+FROM
+  ${ref("products")}

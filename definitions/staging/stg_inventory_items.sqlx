@@ -1,0 +1,39 @@
+config {
+  type: "view",
+  description: "Staged inventory items data from TheLook ecommerce. One row per inventory item.",
+  columns: {
+    inventory_item_id: "Primary key. Unique identifier for each inventory item.",
+    product_id: "Foreign key to stg_products. Identifies the product this inventory item represents.",
+    created_at: "Timestamp when the inventory item was created.",
+    sold_at: "Timestamp when the inventory item was sold. Null if not yet sold.",
+    cost: "Cost price of the inventory item.",
+    product_category: "Category of the associated product.",
+    product_name: "Name of the associated product.",
+    product_brand: "Brand of the associated product.",
+    product_retail_price: "Retail price of the associated product.",
+    product_department: "Department of the associated product e.g. mens, womens.",
+    product_sku: "Stock keeping unit identifier of the associated product.",
+    product_distribution_center_id: "Foreign key to stg_distribution_centers. Identifies where the product is stocked."
+  },
+  assertions: {
+    uniqueKey: ["inventory_item_id"],
+    nonNull: ["inventory_item_id", "product_id", "cost"]
+  },
+  tags: ["staging"]
+}
+
+SELECT
+  CAST(id AS int64) AS inventory_item_id,
+  CAST(product_id AS int64) AS product_id,
+  CAST(created_at AS timestamp) AS created_at,
+  CAST(sold_at AS timestamp) AS sold_at,
+  CAST(cost AS numeric) AS cost,
+  CAST(product_category AS string) AS product_category,
+  CAST(product_name AS string) AS product_name,
+  CAST(product_brand AS string) AS product_brand,
+  CAST(product_retail_price AS numeric) AS product_retail_price,
+  CAST(product_department AS string) AS product_department,
+  CAST(product_sku AS string) AS product_sku,
+  CAST(product_distribution_center_id AS integer) AS product_distribution_center_id
+FROM
+  ${ref("inventory_items")}
