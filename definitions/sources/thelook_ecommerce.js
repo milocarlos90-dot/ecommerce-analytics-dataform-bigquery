@@ -9,3 +9,4 @@ declare({
   schema: "thelook_ecommerce",
   name: "users"
 });
+
