@@ -9,6 +9,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -16,18 +21,6 @@ jobs:
 
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
-
-      - name: Create Dataform credentials file
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-        run: |
-          python3 << 'EOF'
-          import json, os
-          sa = json.loads(os.environ['GCP_SA_KEY'])
-          df_creds = {"projectId": sa["project_id"], "credentials": {"client_email": sa["client_email"], "private_key": sa["private_key"]}}
-          with open(".df-credentials.json", "w") as f:
-            json.dump(df_creds, f)
-          EOF
 
       - name: Run Dataform
         run: dataform run --project-dir .
