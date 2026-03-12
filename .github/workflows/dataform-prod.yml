@@ -22,5 +22,8 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
+      - name: Init Dataform credentials
+        run: echo '{"projectId":"ecommerce-analytics-dataform","useApplicationDefaultCredentials":true}' > .df-credentials.json
+
       - name: Run Dataform
         run: dataform run --project-dir .
