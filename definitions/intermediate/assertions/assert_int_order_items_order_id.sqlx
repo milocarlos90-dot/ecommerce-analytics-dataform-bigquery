@@ -1,0 +1,13 @@
+
+config {
+  type: "assertion",
+  description: "Checks that every order item in int_order_items_enriched references a valid order in stg_orders. Catches orphaned order items.",
+  tags: ["intermediate"]
+}
+
+SELECT
+  oi.order_id
+FROM ${ref('int_order_items_enriched')} oi
+LEFT JOIN ${ref('stg_orders')} o
+  ON oi.order_id = o.order_id
+WHERE o.order_id IS NULL

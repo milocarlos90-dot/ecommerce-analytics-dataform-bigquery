@@ -1,0 +1,82 @@
+config {
+  type: "view",
+  schema: "analytics_intermediate",
+  description: "Enriched order items with inventory cost data, standardised status, gross margin calculations and lifecycle flags",
+  columns: {
+    order_item_id: "Unique identifier for each order item",
+    order_id: "Foreign key to int_orders_financials. Identifies the order this item belongs to",
+    user_id: "Foreign key to int_users. Identifies the user who placed the order",
+    product_id: "Foreign key to stg_products. Identifies the product ordered",
+    inventory_item_id: "Foreign key to stg_inventory_items. Identifies the specific inventory item",
+    status: "Raw order item status from staging",
+    status_standardized: "Normalised lifecycle status of the order item",
+    created_at: "Timestamp when the order item was created",
+    shipped_at: "Timestamp when the order item was shipped",
+    delivered_at: "Timestamp when the order item was delivered",
+    returned_at: "Timestamp when the order item was returned",
+    sale_price: "Sale price of the order item in USD",
+    cost: "Cost of the inventory item in USD",
+    sold_at: "Timestamp when the inventory item was sold. Unreliable in source data - often null",
+    distribution_center_id: "Foreign key to stg_distribution_centers. Distribution center that fulfilled the item",
+    gross_profit: "Sale price minus cost. Revenue minus direct cost for this item",
+    gross_margin: "Gross profit divided by sale price. Proportion of revenue retained after direct costs",
+    is_completed: "True if the order item status is completed",
+    is_cancelled: "True if the order item status is cancelled",
+    is_returned: "True if the order item status is returned",
+    is_shipped: "True if the order item status is shipped",
+    is_processing: "True if the order item status is processing"
+  },
+  assertions: {
+    uniqueKey: ["order_item_id"],
+    nonNull: [
+      "order_item_id",
+      "order_id",
+      "user_id",
+      "product_id",
+      "sale_price",
+      "status_standardized",
+      "is_completed",
+      "is_cancelled",
+      "is_returned",
+      "is_shipped",
+      "is_processing"
+    ],
+    rowConditions: [
+      `status_standardized IN ('pending', 'processing', 'shipped', 'delivered', 'completed', 'returned', 'cancelled')`
+    ]
+  },
+  tags: ["intermediate"]
+}
+
+WITH order_items AS (
+  SELECT
+    oi.* EXCEPT(status),
+    CASE
+      WHEN LOWER(oi.status) = 'complete' THEN 'completed'
+      ELSE LOWER(oi.status)
+    END AS status_standardized
+  FROM ${ref('stg_order_items')} oi
+),
+
+joined AS (
+  SELECT
+    oi.*,
+    inv.cost,
+    inv.sold_at,
+    inv.distribution_center_id,
+    ROUND(oi.sale_price - inv.cost, 2)                                AS gross_profit,
+    ROUND((oi.sale_price - inv.cost) / NULLIF(oi.sale_price, 0), 4)  AS gross_margin
+  FROM order_items oi
+  LEFT JOIN ${ref('stg_inventory_items')} inv
+    ON oi.inventory_item_id = inv.inventory_item_id
+)
+
+SELECT
+  j.*,
+  (j.status_standardized = 'completed')  AS is_completed,
+  (j.status_standardized = 'cancelled')  AS is_cancelled,
+  (j.status_standardized = 'returned')   AS is_returned,
+  (j.status_standardized = 'shipped')    AS is_shipped,
+  (j.status_standardized = 'processing') AS is_processing
+
+FROM joined j
