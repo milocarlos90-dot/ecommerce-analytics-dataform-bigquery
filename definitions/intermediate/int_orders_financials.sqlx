@@ -1,0 +1,129 @@
+config {
+    type: "view",
+    schema: "analytics_intermediate",
+    description: "Order level financial aggregations joining order attributes with item level cost, revenue and margin data from int_order_items_enriched",
+    columns: {
+        order_id: "Unique identifier for each order",
+        user_id: "Foreign key to int_users. Identifies the customer who placed the order",
+        order_created_at: "Timestamp when the order was created",
+        order_created_date: "Date when the order was created",
+        shipped_at: "Timestamp when the order was shipped",
+        shipped_date: "Date when the order was shipped",
+        delivered_at: "Timestamp when the order was delivered",
+        delivered_date: "Date when the order was delivered",
+        returned_at: "Timestamp when the order was returned",
+        returned_date: "Date when the order was returned",
+        status_standardized: "Normalised lifecycle status of the order",
+        number_of_items: "Number of items in the order from source",
+        item_count: "Count of order items from int_order_items_enriched",
+        distinct_products: "Count of distinct products in the order",
+        gross_revenue: "Total sale price of all items in the order",
+        completed_revenue: "Total sale price of completed items",
+        cancelled_revenue: "Total sale price of cancelled items",
+        returned_revenue: "Total sale price of returned items",
+        shipped_revenue: "Total sale price of shipped items",
+        processing_revenue: "Total sale price of processing items",
+        total_cost: "Total cost of all inventory items in the order",
+        total_gross_profit: "Total gross profit. Gross revenue minus total cost",
+        avg_gross_margin: "Average gross margin across all items in the order",
+        is_completed_order: "True if all items in the order are completed",
+        is_cancelled_order: "True if all items in the order are cancelled",
+        is_returned_order: "True if all items in the order are returned",
+        is_shipped_order: "True if all items in the order are shipped",
+        is_processing_order: "True if all items in the order are processing"
+    },
+    assertions: {
+        uniqueKey: ["order_id"],
+        nonNull: [
+            "order_id",
+            "user_id",
+            "order_created_at",
+            "gross_revenue",
+            "status_standardized"
+        ],
+        rowConditions: [
+            `status_standardized IN ('pending', 'processing', 'shipped', 'delivered', 'completed', 'returned', 'cancelled')`
+        ]
+    },
+    tags: ["intermediate"]
+}
+
+WITH
+  order_financials AS (
+  SELECT
+    order_id,
+    COUNT(*) AS item_count,
+    COUNT(DISTINCT product_id) AS distinct_products,
+    SUM(sale_price) AS gross_revenue,
+    SUM(
+    IF
+      (is_completed, sale_price, 0)) AS completed_revenue,
+    SUM(
+    IF
+      (is_cancelled, sale_price, 0)) AS cancelled_revenue,
+    SUM(
+    IF
+      (is_returned, sale_price, 0)) AS returned_revenue,
+    SUM(
+    IF
+      (is_shipped, sale_price, 0)) AS shipped_revenue,
+    SUM(
+    IF
+      (is_processing, sale_price, 0)) AS processing_revenue,
+    SUM(cost) AS total_cost,
+    SUM(gross_profit) AS total_gross_profit,
+    ROUND(AVG(gross_margin), 4) AS avg_gross_margin,
+    LOGICAL_AND(is_completed) AS is_completed_order,
+    LOGICAL_AND(is_cancelled) AS is_cancelled_order,
+    LOGICAL_AND(is_returned) AS is_returned_order,
+    LOGICAL_AND(is_shipped) AS is_shipped_order,
+    LOGICAL_AND(is_processing) AS is_processing_order
+  FROM
+    ${ref('int_order_items_enriched')}
+  GROUP BY
+    order_id ),
+  orders AS (
+  SELECT
+    o.order_id,
+    o.user_id,
+    o.created_at AS order_created_at,
+    DATE(o.created_at) AS order_created_date,
+    o.shipped_at AS shipped_at,
+    DATE(o.shipped_at) AS shipped_date,
+    o.delivered_at AS delivered_at,
+    DATE(o.delivered_at) AS delivered_date,
+    o.returned_at AS returned_at,
+    DATE(o.returned_at) AS returned_date,
+    o.status,
+    CASE
+      WHEN LOWER(o.status) = 'complete' THEN 'completed'
+      ELSE LOWER(o.status)
+  END
+    AS status_standardized,
+    o.number_of_items
+  FROM
+    ${ref('stg_orders')} o )
+SELECT
+  o.* EXCEPT(status),
+  f.item_count,
+  f.distinct_products,
+  f.gross_revenue,
+  f.completed_revenue,
+  f.cancelled_revenue,
+  f.returned_revenue,
+  f.shipped_revenue,
+  f.processing_revenue,
+  f.total_cost,
+  f.total_gross_profit,
+  f.avg_gross_margin,
+  f.is_completed_order,
+  f.is_cancelled_order,
+  f.is_returned_order,
+  f.is_shipped_order,
+  f.is_processing_order
+FROM
+  orders o
+LEFT JOIN
+  order_financials f
+ON
+  o.order_id = f.order_id

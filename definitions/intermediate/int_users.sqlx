@@ -1,0 +1,64 @@
+config {
+  type: "view",
+  schema: "analytics_intermediate",
+  description: "Cleaned and standardised user data with country enrichment",
+  columns: {
+    user_id: "Unique identifier for each user",
+    user_created_at: "Timestamp when the user account was created",
+    first_name: "Cleaned and title-cased first name",
+    last_name: "Cleaned and title-cased last name",
+    email: "Cleaned and lowercased email address",
+    gender: "Standardised gender label, Male or Female, Unknown if not provided",
+    state: "Cleaned and title-cased state or region",
+    street_address: "Cleaned street address",
+    postal_code: "Cleaned and uppercased postal code",
+    city: "Cleaned and title-cased city name",
+    country: "Raw country value from staging before standardisation",
+    traffic_source: "Lowercased channel through which the user was acquired",
+    country_standardized: "Standardised country name mapped from raw country value"
+  },
+  assertions: {
+    uniqueKey: ["user_id"],
+    nonNull: ["user_id"]
+  },
+  tags: ["intermediate"]
+}
+
+WITH
+  users AS (
+  SELECT
+    user_id,
+    created_at AS user_created_at,
+    INITCAP(NULLIF(TRIM(first_name), '')) AS first_name,
+    INITCAP(NULLIF(TRIM(last_name), '')) AS last_name,
+    LOWER(NULLIF(TRIM(email), '')) AS email,
+    CASE
+      WHEN NULLIF(TRIM(gender), '') = 'M' THEN 'Male'
+      WHEN NULLIF(TRIM(gender), '') = 'F' THEN 'Female'
+      ELSE 'Unknown'
+  END
+    AS gender,
+    INITCAP(NULLIF(TRIM(state), '')) AS state,
+    NULLIF(TRIM(street_address), '') AS street_address,
+    UPPER(NULLIF(TRIM(postal_code), '')) AS postal_code,
+    INITCAP(NULLIF(TRIM(city), '')) AS city,
+    INITCAP(NULLIF(TRIM(country), '')) AS country,
+    LOWER(NULLIF(TRIM(traffic_source), '')) AS traffic_source
+  FROM
+    ${ref('stg_users')} ), 
+    
+users_standardized AS (
+  SELECT
+    c.* EXCEPT(country),
+    COALESCE(m.string_field_1, c.country) AS country_standardized
+  FROM
+    users c
+  LEFT JOIN
+    ${ref('country_mapping')} m
+  ON
+    c.country = m.string_field_0 )
+
+SELECT
+  *
+FROM
+  users_standardized

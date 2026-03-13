@@ -1,5 +1,6 @@
 config {
   type: "view",
+  schema: "analytics_staging",
   description: "Staged orders data from TheLook ecommerce. One row per order.",
   columns: {
     order_id: "Primary key. Unique identifier for each order.",

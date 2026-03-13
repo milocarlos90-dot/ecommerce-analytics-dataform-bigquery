@@ -1,0 +1,70 @@
+config {
+  type: "assertion",
+  description: "Business rule validation for int_orders_financials covering financial sanity, date logic and quantity checks",
+  tags: ["intermediate"]
+}
+
+SELECT
+  order_id,
+  gross_revenue,
+  total_cost,
+  total_gross_profit,
+  completed_revenue,
+  cancelled_revenue,
+  returned_revenue,
+  shipped_revenue,
+  processing_revenue,
+  item_count,
+  distinct_products,
+  order_created_at,
+  shipped_at,
+  delivered_at,
+  returned_at,
+
+  -- financial flags
+  gross_revenue < 0                            AS fail_negative_gross_revenue,
+  total_cost < 0                               AS fail_negative_total_cost,
+  gross_revenue > 10000                        AS fail_revenue_exceeds_max,
+  completed_revenue > gross_revenue            AS fail_completed_exceeds_gross,
+  cancelled_revenue > gross_revenue            AS fail_cancelled_exceeds_gross,
+  returned_revenue > gross_revenue             AS fail_returned_exceeds_gross,
+  shipped_revenue > gross_revenue              AS fail_shipped_exceeds_gross,
+  processing_revenue > gross_revenue           AS fail_processing_exceeds_gross,
+  total_cost > gross_revenue                   AS fail_cost_exceeds_gross,
+
+  -- date flags
+  shipped_at < order_created_at                AS fail_shipped_before_created,
+  delivered_at < order_created_at              AS fail_delivered_before_created,
+  returned_at < order_created_at               AS fail_returned_before_created,
+  delivered_at < shipped_at                    AS fail_delivered_before_shipped,
+  returned_at < delivered_at                   AS fail_returned_before_delivered,
+
+  -- quantity flags
+  item_count <= 0                              AS fail_zero_item_count,
+  distinct_products <= 0                       AS fail_zero_distinct_products,
+  item_count < distinct_products               AS fail_items_less_than_products
+
+FROM ${ref('int_orders_financials')}
+WHERE
+  -- financial
+  gross_revenue < 0
+  OR total_cost < 0
+  OR gross_revenue > 10000
+  OR completed_revenue > gross_revenue
+  OR cancelled_revenue > gross_revenue
+  OR returned_revenue > gross_revenue
+  OR shipped_revenue > gross_revenue
+  OR processing_revenue > gross_revenue
+  OR total_cost > gross_revenue
+
+  -- dates
+  OR (shipped_at IS NOT NULL AND shipped_at < order_created_at)
+  OR (delivered_at IS NOT NULL AND delivered_at < order_created_at)
+  OR (returned_at IS NOT NULL AND returned_at < order_created_at)
+  OR (delivered_at IS NOT NULL AND shipped_at IS NOT NULL AND delivered_at < shipped_at)
+  OR (returned_at IS NOT NULL AND delivered_at IS NOT NULL AND returned_at < delivered_at)
+
+  -- quantities
+  OR item_count <= 0
+  OR distinct_products <= 0
+  OR item_count < distinct_products

@@ -1,0 +1,12 @@
+config {
+  type: "assertion",
+  description: "Checks that every order in stg_orders exists in int_orders_financials. Catches orders lost during aggregation.",
+  tags: ["intermediate"]
+}
+
+SELECT
+  o.order_id
+FROM ${ref('stg_orders')} o
+LEFT JOIN ${ref('int_orders_financials')} f
+  ON o.order_id = f.order_id
+WHERE f.order_id IS NULL

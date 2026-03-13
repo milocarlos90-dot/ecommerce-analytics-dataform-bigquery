@@ -1,0 +1,132 @@
+config {
+  type: "view",
+  schema: "analytics_intermediate",
+  description: "Cleaned and enriched event data with bot filtering, session timing, URI metadata parsing, event categorisation and anonymous session handling",
+  columns: {
+    event_id: "Unique identifier for each event",
+    user_id: "Foreign key to int_users. Null for anonymous sessions",
+    visitor_id: "Unified visitor identifier. Uses user_id when known, falls back to session_id for anonymous sessions",
+    session_id: "Identifier for the session in which the event occurred",
+    journey_session_id: "Normalised session identifier for platform generated journey sessions",
+    session_sequence_number: "Sequential position of the event within the session",
+    event_ts: "Timestamp when the event occurred. Renamed from created_at",
+    event_date: "Date when the event occurred",
+    ip_address: "IP address of the user at the time of the event",
+    city: "City where the event was triggered",
+    state: "State where the event was triggered",
+    postal_code: "Postal code where the event was triggered",
+    browser: "Browser used by the user at the time of the event",
+    traffic_source: "Marketing channel through which the user arrived",
+    uri: "URI of the page where the event took place",
+    event_type: "Raw event type from staging",
+    event_category: "Normalised event category. browse, cart_interaction, conversion, order_management or other",
+    page_category: "Page category parsed from the URI",
+    product_id: "Product identifier parsed from the URI. Null if not a product page",
+    is_conversion_event: "True if the event resulted in a purchase",
+    is_session_entry_event: "True if this is the first event in the session",
+    is_anonymous_session: "True if the session has no authenticated user_id",
+    session_start_ts: "Timestamp of the first event in the session",
+    seconds_since_session_start: "Seconds elapsed since the start of the session",
+    seconds_since_previous_event: "Seconds elapsed since the previous event in the session. Null for first event in session"
+  },
+  assertions: {
+    uniqueKey: ["event_id"],
+    nonNull: [
+      "event_id",
+      "visitor_id",
+      "session_id",
+      "event_ts",
+      "event_date",
+      "event_type",
+      "event_category",
+      "is_conversion_event",
+      "is_session_entry_event",
+      "is_anonymous_session",
+      "session_start_ts"
+    ],
+    rowConditions: [
+      `event_category IN ('browse', 'cart_interaction', 'conversion', 'order_management', 'other')`,
+      `seconds_since_session_start >= 0`,
+      `session_sequence_number >= 1`,
+      `seconds_since_previous_event IS NULL OR seconds_since_previous_event >= 0`
+    ]
+  },
+  tags: ["intermediate"]
+}
+
+WITH timestamps_standardized AS (
+  SELECT
+    * EXCEPT(created_at),
+    created_at AS event_ts,
+    DATE(created_at) AS event_date
+  FROM ${ref('stg_events')}
+),
+
+valid_traffic AS (
+  SELECT *
+  FROM timestamps_standardized
+  WHERE LOWER(browser) NOT LIKE '%bot%'
+    AND LOWER(traffic_source) != 'test'
+),
+
+journeys_normalized AS (
+  SELECT
+    *,
+    session_id AS journey_session_id
+  FROM valid_traffic
+),
+
+metadata_parsed AS (
+  SELECT
+    *,
+    REGEXP_EXTRACT(uri, r'^/([^/?]+)')                     AS page_category,
+    CAST(REGEXP_EXTRACT(uri, r'/product/(\d+)') AS INT64)  AS product_id
+  FROM journeys_normalized
+),
+
+events_normalized AS (
+  SELECT
+    *,
+    CASE
+      WHEN event_type IN ('home', 'department', 'product') THEN 'browse'
+      WHEN event_type = 'cart'                             THEN 'cart_interaction'
+      WHEN event_type = 'purchase'                         THEN 'conversion'
+      WHEN event_type = 'cancel'                           THEN 'order_management'
+      ELSE 'other'
+    END AS event_category
+  FROM metadata_parsed
+),
+
+events_flagged AS (
+  SELECT
+    *,
+    (event_category = 'conversion')                        AS is_conversion_event,
+    (session_sequence_number = 1)                          AS is_session_entry_event,
+    (user_id IS NULL)                                      AS is_anonymous_session,
+    COALESCE(CAST(user_id AS STRING), session_id)          AS visitor_id
+  FROM events_normalized
+),
+
+events_with_session_timing AS (
+  SELECT
+    *,
+    MIN(event_ts) OVER (
+      PARTITION BY journey_session_id
+    )                                                      AS session_start_ts,
+    TIMESTAMP_DIFF(
+      event_ts,
+      MIN(event_ts) OVER (PARTITION BY journey_session_id),
+      SECOND
+    )                                                      AS seconds_since_session_start,
+    TIMESTAMP_DIFF(
+      event_ts,
+      LAG(event_ts) OVER (
+        PARTITION BY journey_session_id
+        ORDER BY session_sequence_number
+      ),
+      SECOND
+    )                                                      AS seconds_since_previous_event
+  FROM events_flagged
+)
+
+SELECT * FROM events_with_session_timing
