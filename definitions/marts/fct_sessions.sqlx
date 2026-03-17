@@ -6,7 +6,7 @@ config {
     column: "session_date",
     granularity: "day"
   },
-  clusterBy: ["session_type", "session_outcome"],
+  clusterBy: ["session_type", "session_outcome","traffic_source"],
   updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
   description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
   columns: {
@@ -141,14 +141,17 @@ WITH session_aggregates AS (
     COUNT(*)                                                        AS path_event_count
 
 FROM ${ref('int_events_cleaned')}
-${when(incremental(), `
-  WHERE journey_session_id IN (
-    SELECT DISTINCT journey_session_id
-    FROM ${ref('int_events_cleaned')}
-    WHERE event_date >= date_sub(current_date(), interval 7 day)
-  )
-`)}
-GROUP BY journey_session_id
+  ${when(incremental(), `
+    WHERE journey_session_id IN (
+      SELECT DISTINCT journey_session_id
+      FROM ${ref('int_events_cleaned')}
+      WHERE event_date >= date_sub(current_date(), interval 7 day)
+    )
+  `)}
+  GROUP BY journey_session_id
+  ${when(incremental(), `
+    HAVING DATE(MIN(event_ts)) >= date_sub(current_date(), interval 7 day)
+  `)}
 ),
 
 session_enriched AS (
