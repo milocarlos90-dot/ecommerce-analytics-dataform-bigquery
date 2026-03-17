@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: "analytics_mart",
+  schema: "analytics_mart" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
   description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
   columns: {
     journey_session_id: "Primary key. Unique identifier for each session",
