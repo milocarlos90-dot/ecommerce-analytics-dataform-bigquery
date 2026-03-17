@@ -1,0 +1,57 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Product dimension derived from stg_products. One row per product providing a single analytics-ready record with product attributes, pricing and classification. Serves as the canonical product entity for joining across fact tables.",
+  columns: {
+    product_sk: "Surrogate key for the product dimension. Generated from product_id using MD5 hash",
+    product_id: "Natural business key identifying the product in the source system",
+    sku: "Stock keeping unit. Unique product identifier used for inventory management",
+    category: "Product category e.g. Accessories, Outerwear",
+    product_name: "Full product name",
+    brand: "Product brand name",
+    department: "Internal department classification. Men or Women",
+    cost: "Product cost in USD",
+    retail_price: "Product retail price in USD",
+    margin: "Retail price minus cost. Indicative product margin at full price"
+  },
+  assertions: {
+    uniqueKey: ["product_sk"],
+    nonNull: [
+      "product_sk",
+      "product_id",
+      "sku",
+      "category",
+      "retail_price",
+      "cost"
+    ],
+    rowConditions: [
+      `product_id > 0`,
+      `cost >= 0`,
+      `cost <= 10000`,
+      `retail_price >= 0`,
+      `retail_price <= 10000`,
+      `retail_price >= cost`,
+      `department IN ('Men', 'Women')`
+    ]
+  },
+  tags: ["mart"]
+}
+
+SELECT
+  -- Keys
+  product_id,
+  sku,
+  TO_HEX(MD5(CAST(product_id AS STRING)))                    AS product_sk,
+
+  -- Classification
+  category,
+  product_name,
+  brand,
+  department,
+
+  -- Pricing
+  cost,
+  retail_price,
+  ROUND(retail_price - cost, 2)                              AS margin
+
+FROM ${ref('stg_products')}

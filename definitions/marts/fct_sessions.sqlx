@@ -1,0 +1,308 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
+  columns: {
+    journey_session_id: "Primary key. Unique identifier for each session",
+    session_sk: "Surrogate key generated from journey_session_id using MD5 hash",
+    user_id: "Natural key. Foreign key to dim_users. Null for anonymous sessions",
+    user_sk: "Surrogate key. Foreign key to dim_users. Null for anonymous sessions",
+    product_id: "Natural key. Foreign key to dim_products. Null for anonymous sessions",
+    product_sk: "Surrogate key. Foreign key to dim_products. Null for anonymous sessions",
+    session_start_ts: "Timestamp of the first event in the session",
+    session_end_ts: "Timestamp of the last event in the session",
+    session_date: "Date of the session start. Foreign key to dim_dates",
+    session_duration_seconds: "Total session duration in seconds",
+    session_duration_minutes: "Total session duration in minutes",
+    event_count: "Total number of events in the session",
+    max_session_sequence: "Highest sequence number reached in the session",
+    traffic_source: "Acquisition channel of the session entry event",
+    browser: "Browser used for the session",
+    distinct_products_viewed: "Count of distinct products viewed in the session. Always 1 in TheLook dataset as sessions are tied to a single product.",
+    product_view_count: "Total number of product page views in the session",
+    cart_event_count: "Total number of cart events in the session",
+    purchase_event_count: "Total number of purchase events in the session",
+    first_event_type: "First event type in the session",
+    last_event_type: "Last event type in the session",
+    has_conversion: "True if the session resulted in a purchase",
+    time_to_purchase_seconds: "Seconds from session start to first purchase event",
+    is_bounce: "True if the session had only one event",
+    is_no_product_engagement: "True if the session had no product views, cart or purchase events",
+    session_type: "Behavioural classification. conversion, research, single_product or browse",
+    session_outcome: "Funnel exit point. purchase, cart_abandon, product_exit, bounce or browse_exit",
+    has_home: "True if the session included a home page event",
+    has_department: "True if the session included a department page event",
+    has_product: "True if the session included a product page event",
+    has_cart: "True if the session included a cart event",
+    has_purchase: "True if the session included a purchase event",
+    funnel_depth: "Deepest funnel stage reached. 1=home 2=department 3=product 4=cart 5=purchase",
+    session_path: "Ordered sequence of event types in the session separated by arrows",
+    path_length_bucket: "Session path length bucket. 1 step, 2-3 steps, 4-5 steps, 6-7 steps, 8-10 steps or 10+ steps",
+    home_ts: "Timestamp of first home page event in the session",
+    department_ts: "Timestamp of first department page event in the session",
+    product_ts: "Timestamp of first product page event in the session",
+    cart_ts: "Timestamp of first cart event in the session",
+    purchase_ts: "Timestamp of first purchase event in the session",
+    seconds_home_to_department: "Seconds between first home and first department event",
+    seconds_department_to_product: "Seconds between first department and first product event",
+    seconds_product_to_cart: "Seconds between first product and first cart event",
+    seconds_cart_to_purchase: "Seconds between first cart and first purchase event",
+    minutes_cart_to_purchase: "Minutes between first cart and first purchase event",
+    time_to_purchase_minute_bucket: "Cart to purchase time bucket in minutes",
+    time_to_purchase_hour_bucket: "Cart to purchase time bucket in hours",
+    time_to_purchase_minute_bucket_order: "Sort order for minute bucket. Used for BI chart ordering",
+    time_to_purchase_hour_bucket_order: "Sort order for hour bucket. Used for BI chart ordering"
+  },
+  assertions: {
+    uniqueKey: ["session_sk"],
+    nonNull: [
+      "journey_session_id",
+      "session_sk",
+      "session_start_ts",
+      "session_date",
+      "event_count",
+      "has_conversion",
+      "is_bounce",
+      "session_type",
+      "session_outcome",
+      "funnel_depth"
+    ],
+    rowConditions: [
+      `event_count >= 1`,
+      `funnel_depth BETWEEN 0 AND 5`,
+      `session_type IN ('conversion', 'research', 'single_product', 'browse')`,
+      `session_outcome IN ('purchase', 'cart_abandon', 'product_exit', 'bounce', 'browse_exit')`,
+      `session_duration_seconds >= 0`
+    ]
+  },
+  tags: ["mart"]
+}
+
+WITH session_aggregates AS (
+  SELECT
+    journey_session_id,
+    MIN(user_id)                                                    AS user_id,
+    MIN(product_id)                                                 AS product_id,
+
+    -- Timing
+    MIN(event_ts)                                                   AS session_start_ts,
+    MAX(event_ts)                                                   AS session_end_ts,
+    DATE(MIN(event_ts))                                             AS session_date,
+    TIMESTAMP_DIFF(MAX(event_ts), MIN(event_ts), SECOND)           AS session_duration_seconds,
+    TIMESTAMP_DIFF(MAX(event_ts), MIN(event_ts), MINUTE)           AS session_duration_minutes,
+
+    -- Volume
+    COUNT(*)                                                        AS event_count,
+    MAX(session_sequence_number)                                    AS max_session_sequence,
+
+    -- Acquisition
+    MAX(CASE WHEN is_session_entry_event THEN traffic_source END)   AS traffic_source,
+    MAX(CASE WHEN is_session_entry_event THEN browser END)          AS browser,
+
+    -- Product behaviour
+    COUNT(DISTINCT product_id)                                      AS distinct_products_viewed,
+    COUNTIF(event_type = 'product')                                 AS product_view_count,
+    COUNTIF(event_type = 'cart')                                    AS cart_event_count,
+    COUNTIF(event_type = 'purchase')                                AS purchase_event_count,
+    MAX(is_conversion_event)                                        AS has_conversion,
+
+
+    -- Navigation
+    ARRAY_AGG(event_type ORDER BY event_ts LIMIT 1)[OFFSET(0)]     AS first_event_type,
+    ARRAY_AGG(event_type ORDER BY event_ts DESC LIMIT 1)[OFFSET(0)] AS last_event_type,
+
+    -- Conversion timing
+    MIN(CASE WHEN is_conversion_event THEN seconds_since_session_start END) AS time_to_purchase_seconds,
+
+    -- Funnel flags
+    MAX(event_type = 'home')                                        AS has_home,
+    MAX(event_type = 'department')                                  AS has_department,
+    MAX(event_type = 'product')                                     AS has_product,
+    MAX(event_type = 'cart')                                        AS has_cart,
+    MAX(event_type = 'purchase')                                    AS has_purchase,
+
+    -- Funnel step timestamps (folded from fct_funnel_time_to_steps)
+    MIN(CASE WHEN event_type = 'home' THEN event_ts END)            AS home_ts,
+    MIN(CASE WHEN event_type = 'department' THEN event_ts END)      AS department_ts,
+    MIN(CASE WHEN event_type = 'product' THEN event_ts END)         AS product_ts,
+    MIN(CASE WHEN event_type = 'cart' THEN event_ts END)            AS cart_ts,
+    MIN(CASE WHEN event_type = 'purchase' THEN event_ts END)        AS purchase_ts,
+
+    -- Path analysis (folded from fct_session_path_analysis)
+    STRING_AGG(event_type, ' → ' ORDER BY session_sequence_number)  AS session_path,
+    COUNT(*)                                                        AS path_event_count
+
+  FROM ${ref('fct_events')}
+  GROUP BY journey_session_id
+),
+
+session_enriched AS (
+  SELECT
+    s.*,
+
+    -- Derived classifications
+    event_count = 1                                                 AS is_bounce,
+    (product_view_count = 0
+      AND NOT has_cart
+      AND NOT has_purchase)                                         AS is_no_product_engagement,
+
+    CASE
+      WHEN has_conversion THEN 'conversion'
+      WHEN distinct_products_viewed > 1 THEN 'research'
+      WHEN distinct_products_viewed = 1 THEN 'single_product'
+      ELSE 'browse'
+    END                                                             AS session_type,
+
+    CASE
+      WHEN has_purchase THEN 'purchase'
+      WHEN has_cart THEN 'cart_abandon'
+      WHEN has_product THEN 'product_exit'
+      WHEN event_count = 1 THEN 'bounce'
+      ELSE 'browse_exit'
+    END                                                             AS session_outcome,
+
+    GREATEST(
+      CAST(has_home AS INT64) * 1,
+      CAST(has_department AS INT64) * 2,
+      CAST(has_product AS INT64) * 3,
+      CAST(has_cart AS INT64) * 4,
+      CAST(has_purchase AS INT64) * 5
+    )                                                               AS funnel_depth,
+
+    -- Path bucket (folded from fct_session_path_analysis)
+    CASE
+      WHEN path_event_count = 1 THEN '1 step'
+      WHEN path_event_count BETWEEN 2 AND 3 THEN '2-3 steps'
+      WHEN path_event_count BETWEEN 4 AND 5 THEN '4-5 steps'
+      WHEN path_event_count BETWEEN 6 AND 7 THEN '6-7 steps'
+      WHEN path_event_count BETWEEN 8 AND 10 THEN '8-10 steps'
+      ELSE '10+ steps'
+    END                                                             AS path_length_bucket,
+
+    -- Funnel time calculations (folded from fct_funnel_time_to_steps)
+    TIMESTAMP_DIFF(department_ts, home_ts, SECOND)                 AS seconds_home_to_department,
+    TIMESTAMP_DIFF(product_ts, department_ts, SECOND)              AS seconds_department_to_product,
+    TIMESTAMP_DIFF(cart_ts, product_ts, SECOND)                    AS seconds_product_to_cart,
+    TIMESTAMP_DIFF(purchase_ts, cart_ts, SECOND)                   AS seconds_cart_to_purchase,
+    TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE)                   AS minutes_cart_to_purchase,
+    TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR)                     AS hours_cart_to_purchase,
+
+    -- Time buckets
+    CASE
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) IS NULL THEN NULL
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 1 THEN '0-1 min'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 2 THEN '1-2 min'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 5 THEN '2-5 min'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 10 THEN '5-10 min'
+      ELSE '10+ min'
+    END                                                             AS time_to_purchase_minute_bucket,
+
+    CASE
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) IS NULL THEN NULL
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 1 THEN 1
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 2 THEN 2
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 5 THEN 3
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, MINUTE) <= 10 THEN 4
+      ELSE 5
+    END                                                             AS time_to_purchase_minute_bucket_order,
+
+    CASE
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) IS NULL THEN NULL
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 1 THEN '1 hour'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 2 THEN '1-2 hours'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 5 THEN '2-5 hours'
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 10 THEN '5-10 hours'
+      ELSE '10+ hours'
+    END                                                             AS time_to_purchase_hour_bucket,
+
+    CASE
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) IS NULL THEN NULL
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 1 THEN 1
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 2 THEN 2
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 5 THEN 3
+      WHEN TIMESTAMP_DIFF(purchase_ts, cart_ts, HOUR) <= 10 THEN 4
+      ELSE 5
+    END                                                             AS time_to_purchase_hour_bucket_order
+
+  FROM session_aggregates s
+)
+
+SELECT
+  -- Keys
+  s.journey_session_id,
+  TO_HEX(MD5(s.journey_session_id))                                AS session_sk,
+  s.user_id,
+  u.user_sk,
+  s.product_id,
+  p.product_sk,
+
+  -- Timing
+  s.session_start_ts,
+  s.session_end_ts,
+  s.session_date,
+  s.session_duration_seconds,
+  s.session_duration_minutes,
+
+  -- Volume
+  s.event_count,
+  s.max_session_sequence,
+
+  -- Acquisition
+  s.traffic_source,
+  s.browser,
+
+  -- Product behaviour
+  s.distinct_products_viewed,
+  s.product_view_count,
+  s.cart_event_count,
+  s.purchase_event_count,
+
+  -- Navigation
+  s.first_event_type,
+  s.last_event_type,
+  s.session_path,
+  s.path_length_bucket,
+
+  -- Conversion
+  s.has_conversion,
+  s.time_to_purchase_seconds,
+
+  -- Classification
+  s.is_bounce,
+  s.is_no_product_engagement,
+  s.session_type,
+  s.session_outcome,
+
+  -- Funnel flags
+  s.has_home,
+  s.has_department,
+  s.has_product,
+  s.has_cart,
+  s.has_purchase,
+  s.funnel_depth,
+
+  -- Funnel timestamps
+  s.home_ts,
+  s.department_ts,
+  s.product_ts,
+  s.cart_ts,
+  s.purchase_ts,
+
+  -- Funnel timing
+  s.seconds_home_to_department,
+  s.seconds_department_to_product,
+  s.seconds_product_to_cart,
+  s.seconds_cart_to_purchase,
+  s.minutes_cart_to_purchase,
+  s.time_to_purchase_minute_bucket,
+  s.time_to_purchase_minute_bucket_order,
+  s.time_to_purchase_hour_bucket,
+  s.time_to_purchase_hour_bucket_order,
+
+  CURRENT_TIMESTAMP()                                              AS updated_at
+
+FROM session_enriched s
+LEFT JOIN ${ref('dim_users')} u
+  ON s.user_id = u.user_id
+LEFT JOIN ${ref('dim_products')} p
+  ON s.product_id = p.product_id

@@ -1,0 +1,12 @@
+config {
+  type: "assertion",
+  description: "Checks at least 95% of products have a non-null brand value.",
+  tags: ["mart"]
+}
+
+SELECT
+  COUNTIF(brand IS NULL) AS null_count,
+  COUNT(*) AS total_count,
+  ROUND(COUNTIF(brand IS NULL) / COUNT(*), 4) AS null_rate
+FROM ${ref('dim_products')}
+HAVING ROUND(COUNTIF(brand IS NULL) / COUNT(*), 4) > 0.05

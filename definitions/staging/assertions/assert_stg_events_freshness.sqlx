@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  description: "Checks stg_events has data loaded within the last 24 hours. Fires if the ELT pipeline has not delivered fresh event data. Indicates a source ingestion failure rather than a transformation issue.",
+  tags: ["staging"]
+}
+
+SELECT
+  MAX(created_at)        AS latest_event_ts,
+  CURRENT_TIMESTAMP()    AS checked_at,
+  TIMESTAMP_DIFF(
+    CURRENT_TIMESTAMP(),
+    MAX(created_at),
+    HOUR
+  )                      AS hours_since_latest_event
+FROM ${ref('stg_events')}
+HAVING MAX(created_at) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)

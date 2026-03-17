@@ -1,0 +1,95 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Order level fact table. One row per order joining order attributes, financial aggregations and customer dimension keys. Primary fact table for revenue, margin and order lifecycle analysis.",
+  columns: {
+    order_id: "Natural business key. Unique identifier for each order",
+    order_sk: "Surrogate key generated from order_id using MD5 hash",
+    user_id: "Natural key. Foreign key to dim_users",
+    user_sk: "Surrogate key. Foreign key to dim_users",
+    order_created_at: "Timestamp when the order was created",
+    order_created_date: "Date when the order was created. Foreign key to dim_dates",
+    shipped_at: "Timestamp when the order was shipped",
+    delivered_at: "Timestamp when the order was delivered",
+    returned_at: "Timestamp when the order was returned",
+    status_standardized: "Normalised order status. pending, processing, shipped, delivered, completed, returned or cancelled",
+    number_of_items: "Number of items in the order from source",
+    item_count: "Count of order items from int_order_items_enriched",
+    distinct_products: "Count of distinct products in the order",
+    gross_revenue: "Total sale price of all items in the order",
+    completed_revenue: "Total sale price of completed items",
+    cancelled_revenue: "Total sale price of cancelled items",
+    returned_revenue: "Total sale price of returned items",
+    shipped_revenue: "Total sale price of shipped items",
+    processing_revenue: "Total sale price of processing items",
+    total_cost: "Total inventory cost of all items in the order",
+    total_gross_profit: "Total gross profit. Gross revenue minus total cost",
+    is_completed_order: "True if all items in the order are completed",
+    is_cancelled_order: "True if all items in the order are cancelled",
+    is_returned_order: "True if all items in the order are returned",
+    is_shipped_order: "True if all items in the order are shipped",
+    is_processing_order: "True if all items in the order are processing"
+  },
+  assertions: {
+    uniqueKey: ["order_sk"],
+    nonNull: [
+      "order_id",
+      "order_sk",
+      "order_created_at",
+      "order_created_date",
+      "gross_revenue",
+      "status_standardized"
+    ],
+    rowConditions: [
+      `gross_revenue >= 0`,
+      `gross_revenue <= 10000`,
+      `total_cost >= 0`,
+      `item_count >= 1`,
+      `status_standardized IN ('pending', 'processing', 'shipped', 'delivered', 'completed', 'returned', 'cancelled')`
+    ]
+  },
+  tags: ["mart"]
+}
+
+SELECT
+  -- Keys
+  f.order_id,
+  TO_HEX(MD5(CAST(f.order_id AS STRING)))         AS order_sk,
+  f.user_id,
+  u.user_sk,
+
+  -- Dates
+  f.order_created_at,
+  f.order_created_date,
+  f.shipped_at,
+  f.delivered_at,
+  f.returned_at,
+
+  -- Order attributes
+  f.status_standardized,
+  f.number_of_items,
+
+  -- Measures
+  f.item_count,
+  f.distinct_products,
+  f.gross_revenue,
+  f.completed_revenue,
+  f.cancelled_revenue,
+  f.returned_revenue,
+  f.shipped_revenue,
+  f.processing_revenue,
+  f.total_cost,
+  f.total_gross_profit,
+
+  -- Flags
+  f.is_completed_order,
+  f.is_cancelled_order,
+  f.is_returned_order,
+  f.is_shipped_order,
+  f.is_processing_order,
+
+  CURRENT_TIMESTAMP()                              AS updated_at
+
+FROM ${ref('int_orders_financials')} f
+LEFT JOIN ${ref('dim_users')} u
+  ON f.user_id = u.user_id
