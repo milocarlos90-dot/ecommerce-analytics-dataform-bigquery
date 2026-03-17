@@ -141,7 +141,13 @@ WITH session_aggregates AS (
     COUNT(*)                                                        AS path_event_count
 
 FROM ${ref('int_events_cleaned')}
-${when(incremental(), `WHERE event_date >= date_sub(current_date(), interval 7 day)`)}
+${when(incremental(), `
+  WHERE journey_session_id IN (
+    SELECT DISTINCT journey_session_id
+    FROM ${ref('int_events_cleaned')}
+    WHERE event_date >= date_sub(current_date(), interval 7 day)
+  )
+`)}
 GROUP BY journey_session_id
 ),
 
