@@ -1,6 +1,13 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: "analytics_mart" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
+  uniqueKey: ["session_sk"],
+  partitionBy: {
+    column: "session_date",
+    granularity: "day"
+  },
+  clusterBy: ["session_type", "session_outcome"],
+  updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
   description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
   columns: {
     journey_session_id: "Primary key. Unique identifier for each session",
@@ -48,6 +55,7 @@ config {
     seconds_product_to_cart: "Seconds between first product and first cart event",
     seconds_cart_to_purchase: "Seconds between first cart and first purchase event",
     minutes_cart_to_purchase: "Minutes between first cart and first purchase event",
+    hours_cart_to_purchase: "Hours between first cart and first purchase event",
     time_to_purchase_minute_bucket: "Cart to purchase time bucket in minutes",
     time_to_purchase_hour_bucket: "Cart to purchase time bucket in hours",
     time_to_purchase_minute_bucket_order: "Sort order for minute bucket. Used for BI chart ordering",
@@ -132,8 +140,9 @@ WITH session_aggregates AS (
     STRING_AGG(event_type, ' → ' ORDER BY session_sequence_number)  AS session_path,
     COUNT(*)                                                        AS path_event_count
 
-  FROM ${ref('fct_events')}
-  GROUP BY journey_session_id
+FROM ${ref('int_events_cleaned')}
+${when(incremental(), `WHERE event_date >= date_sub(current_date(), interval 7 day)`)}
+GROUP BY journey_session_id
 ),
 
 session_enriched AS (
@@ -294,6 +303,7 @@ SELECT
   s.seconds_product_to_cart,
   s.seconds_cart_to_purchase,
   s.minutes_cart_to_purchase,
+  s.hours_cart_to_purchase,
   s.time_to_purchase_minute_bucket,
   s.time_to_purchase_minute_bucket_order,
   s.time_to_purchase_hour_bucket,

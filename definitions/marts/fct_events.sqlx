@@ -1,6 +1,13 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: "analytics_mart" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
+  uniqueKey: ["event_sk"],
+  partitionBy: {
+    column: "event_date",
+    granularity: "day"
+  },
+  clusterBy: ["event_type", "event_category"],
+  updatePartitionFilter: "event_date >= date_sub(current_date(), interval 3 day)",
   description: "Event level fact table. One row per web event capturing browsing, cart and conversion behaviour. Joins to dim_users, dim_products and dim_dates for dimensional analysis.",
   columns: {
     event_id: "Primary key. Unique identifier for each event",
@@ -87,3 +94,5 @@ LEFT JOIN ${ref('dim_users')} u
   ON e.user_id = u.user_id
 LEFT JOIN ${ref('dim_products')} p
   ON e.product_id = p.product_id
+WHERE 1=1
+  ${when(incremental(), `AND e.event_ts > (SELECT MAX(event_ts) FROM ${self()})`)}  
