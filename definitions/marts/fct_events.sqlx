@@ -1,0 +1,89 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Event level fact table. One row per web event capturing browsing, cart and conversion behaviour. Joins to dim_users, dim_products and dim_dates for dimensional analysis.",
+  columns: {
+    event_id: "Primary key. Unique identifier for each event",
+    event_sk: "Surrogate key generated from event_id using MD5 hash",
+    user_id: "Natural key. Foreign key to dim_users",
+    user_sk: "Surrogate key. Foreign key to dim_users",
+    product_id: "Natural key. Foreign key to dim_products. Null if not a product page event",
+    product_sk: "Surrogate key. Foreign key to dim_products. Null if not a product page event",
+    event_ts: "Timestamp when the event occurred",
+    event_date: "Date when the event occurred. Foreign key to dim_dates",
+    event_type: "Raw event type from source e.g. home, department, product, cart, purchase",
+    event_category: "Normalised event category. browse, cart_interaction, conversion, order_management or other",
+    page_category: "Page category parsed from URI",
+    browser: "Browser used at time of event",
+    traffic_source: "Marketing channel through which the user arrived",
+    journey_session_id: "Session identifier for the platform generated journey session",
+    session_sequence_number: "Sequential position of the event within the session",
+    is_conversion_event: "True if the event resulted in a purchase",
+    is_session_entry_event: "True if this is the first event in the session",
+    is_anonymous_session: "True if the session has no authenticated user",
+    visitor_id: "Unified visitor identifier. Uses user_id when known, falls back to session_id for anonymous sessions",
+    seconds_since_session_start: "Seconds elapsed since the start of the session",
+    seconds_since_previous_event: "Seconds elapsed since the previous event in the session. Null for first event"
+  },
+  assertions: {
+    uniqueKey: ["event_sk"],
+    nonNull: [
+      "event_id",
+      "event_sk",
+      "event_ts",
+      "event_date",
+      "event_type",
+      "event_category",
+      "journey_session_id",
+      "is_conversion_event",
+      "is_session_entry_event",
+      "is_anonymous_session"
+    ],
+    rowConditions: [
+      `event_category IN ('browse', 'cart_interaction', 'conversion', 'order_management', 'other')`,
+      `seconds_since_session_start >= 0`,
+      `seconds_since_previous_event IS NULL OR seconds_since_previous_event >= 0`
+    ]
+  },
+  tags: ["mart"]
+}
+
+SELECT
+  -- Keys
+  e.event_id,
+  TO_HEX(MD5(CAST(e.event_id AS STRING)))         AS event_sk,
+  e.user_id,
+  u.user_sk,
+  e.product_id,
+  p.product_sk,
+
+  -- Time
+  e.event_ts,
+  e.event_date,
+
+  -- Event attributes
+  e.event_type,
+  e.event_category,
+  e.page_category,
+  e.browser,
+  e.traffic_source,
+
+  -- Session context
+  e.journey_session_id,
+  e.session_sequence_number,
+  e.visitor_id,
+  e.is_anonymous_session,
+  e.seconds_since_session_start,
+  e.seconds_since_previous_event,
+
+  -- Flags
+  e.is_conversion_event,
+  e.is_session_entry_event,
+
+  CURRENT_TIMESTAMP()                              AS updated_at
+
+FROM ${ref('int_events_cleaned')} e
+LEFT JOIN ${ref('dim_users')} u
+  ON e.user_id = u.user_id
+LEFT JOIN ${ref('dim_products')} p
+  ON e.product_id = p.product_id

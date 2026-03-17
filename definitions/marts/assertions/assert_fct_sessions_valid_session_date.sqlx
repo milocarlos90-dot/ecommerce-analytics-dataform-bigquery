@@ -1,0 +1,13 @@
+config {
+  type: "assertion",
+  description: "Checks every session_date in fct_sessions exists in dim_dates. Catches sessions with dates outside the 2018-2030 date spine range.",
+  tags: ["mart"]
+}
+
+SELECT
+  s.journey_session_id,
+  s.session_date
+FROM ${ref('fct_sessions')} s
+LEFT JOIN ${ref('dim_dates')} d
+  ON s.session_date = d.date_day
+WHERE d.date_day IS NULL

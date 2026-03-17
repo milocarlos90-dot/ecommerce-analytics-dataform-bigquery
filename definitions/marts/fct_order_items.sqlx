@@ -1,0 +1,108 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Order item level fact table. One row per order line item joining item attributes, cost, margin and lifecycle flags. Primary fact table for product performance, margin analysis and fulfilment reporting.",
+  columns: {
+    order_item_id: "Natural business key. Unique identifier for each order item",
+    order_item_sk: "Surrogate key generated from order_item_id using MD5 hash",
+    order_id: "Natural key. Foreign key to fct_orders",
+    order_sk: "Surrogate key. Foreign key to fct_orders",
+    user_id: "Natural key. Foreign key to dim_users",
+    user_sk: "Surrogate key. Foreign key to dim_users",
+    product_id: "Natural key. Foreign key to dim_products",
+    product_sk: "Surrogate key. Foreign key to dim_products",
+    distribution_center_id: "Natural key. Foreign key to dim_distribution_centers",
+    distribution_center_sk: "Surrogate key. Foreign key to dim_distribution_centers",
+    created_at: "Timestamp when the order item was created",
+    created_date: "Date when the order item was created. Foreign key to dim_dates",
+    shipped_at: "Timestamp when the order item was shipped",
+    delivered_at: "Timestamp when the order item was delivered",
+    returned_at: "Timestamp when the order item was returned",
+    status_standardized: "Normalised lifecycle status of the order item",
+    sale_price: "Sale price of the order item in USD",
+    cost: "Inventory cost of the order item in USD",
+    gross_profit: "Sale price minus cost",
+    is_completed: "True if the order item status is completed",
+    is_cancelled: "True if the order item status is cancelled",
+    is_returned: "True if the order item status is returned",
+    is_shipped: "True if the order item status is shipped",
+    is_processing: "True if the order item status is processing"
+  },
+  assertions: {
+    uniqueKey: ["order_item_sk"],
+    nonNull: [
+      "order_item_id",
+      "order_item_sk",
+      "order_id",
+      "user_id",
+      "product_id",
+      "created_at",
+      "created_date",
+      "status_standardized",
+      "is_completed",
+      "is_cancelled",
+      "is_returned",
+      "is_shipped",
+      "is_processing"
+    ],
+    rowConditions: [
+      `sale_price >= 0`,
+      `cost >= 0`,
+      `sale_price <= 10000`,
+      `cost <= 10000`,
+      `status_standardized IN ('pending', 'processing', 'shipped', 'delivered', 'completed', 'returned', 'cancelled')`
+    ]
+  },
+  tags: ["mart"]
+}
+
+SELECT
+  -- Keys
+  oi.order_item_id,
+  TO_HEX(MD5(CAST(oi.order_item_id AS STRING)))      AS order_item_sk,
+  oi.order_id,
+  TO_HEX(MD5(CAST(oi.order_id AS STRING)))           AS order_sk,
+  oi.user_id                                         AS user_id,
+  u.user_sk,
+  oi.product_id,
+  p.product_sk,
+  oi.distribution_center_id,
+  d.distribution_center_sk,
+
+  -- Dates
+  oi.created_at,
+  DATE(oi.created_at)                                AS created_date,
+  oi.shipped_at,
+  oi.delivered_at,
+  oi.returned_at,
+
+  -- Order item attributes
+  oi.status_standardized,
+
+  -- Measures
+  oi.sale_price,
+  oi.cost,
+  oi.gross_profit,
+
+  -- Fulfilment timing
+  oi.hours_to_ship,
+  oi.hours_to_deliver,
+  oi.hours_created_to_delivered,
+  oi.days_to_return,
+
+  -- Flags
+  oi.is_completed,
+  oi.is_cancelled,
+  oi.is_returned,
+  oi.is_shipped,
+  oi.is_processing,
+
+  CURRENT_TIMESTAMP()                                AS updated_at
+
+FROM ${ref('int_order_items_enriched')} oi
+LEFT JOIN ${ref('dim_users')} u
+  ON oi.user_id = u.user_id
+LEFT JOIN ${ref('dim_products')} p
+  ON oi.product_id = p.product_id
+LEFT JOIN ${ref('dim_distribution_centers')} d
+  ON oi.distribution_center_id = d.distribution_center_id

@@ -1,0 +1,76 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "user dimension derived from int_users providing a single analytics-ready record per user. Includes identity, demographic, location, geographic and acquisition attributes. Serves as the canonical user entity for joining across fact tables.",
+  columns: {
+    user_sk: "Surrogate key for the user dimension. Generated from user_id using MD5 hash",
+    user_id: "Natural business key identifying the user in the source system",
+    first_name: "Cleaned and title-cased user first name",
+    last_name: "Cleaned and title-cased user last name",
+    full_name: "Concatenated user full name derived from first_name and last_name",
+    email: "Cleaned and lowercased user email address",
+    age: "user age in years",
+    age_group: "user age segmentation. 18-24, 25-34 or 35+",
+    gender: "Standardised user gender. Male, Female or Unknown",
+    street_address: "user street address. Defaults to Unknown when missing",
+    postal_code: "user postal code. Defaults to Unknown when missing",
+    city: "user city. Defaults to Unknown when missing",
+    state: "user state or region. Defaults to Unknown when missing",
+    country_standardized: "Standardised country name mapped from raw country value via country_mapping seed",
+    latitude: "user latitude coordinate",
+    longitude: "user longitude coordinate",
+    user_geography: "Geographic point representing the user's location.",
+    traffic_source: "Lowercased acquisition channel through which the user was acquired",
+    user_created_at: "Timestamp when the user account was created"
+  },
+  assertions: {
+    uniqueKey: ["user_sk"],
+    nonNull: [
+      "user_sk",
+      "user_id",
+      "email",
+      "age",
+      "user_created_at"
+    ],
+    rowConditions: [
+      `age IS NULL OR age BETWEEN 1 AND 120`,
+      `user_id > 0`,
+      `gender IN ('Male', 'Female', 'Unknown')`,
+      `user_created_at <= CURRENT_TIMESTAMP()`,
+      `age_group IS NULL OR age_group IN ('18-24', '25-34', '35+')`
+    ]
+  },
+  tags: ["mart"]
+}
+
+  SELECT
+    -- Keys
+    user_id,
+    TO_HEX(MD5(CAST(user_id AS STRING)))            AS user_sk,
+
+    -- Identity
+    first_name,
+    last_name,
+    CONCAT(first_name, ' ', last_name)              AS full_name,
+    email,
+
+    -- Demographics
+    age,
+    age_group,
+    gender,
+
+    -- Location
+    COALESCE(street_address, 'Unknown')             AS street_address,
+    COALESCE(postal_code, 'Unknown')                AS postal_code,
+    COALESCE(city, 'Unknown')                       AS city,
+    COALESCE(state, 'Unknown')                      AS state,
+    COALESCE(country_standardized, 'Unknown')       AS country_standardized,
+    latitude,
+    longitude,
+    user_geography,
+
+    -- Acquisition
+    traffic_source,
+    user_created_at
+
+  FROM ${ref('int_users')}

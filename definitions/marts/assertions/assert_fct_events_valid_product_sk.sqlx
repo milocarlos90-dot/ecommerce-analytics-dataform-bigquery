@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  description: "Checks every non-null product_sk in fct_events exists in dim_products",
+  tags: ["mart"]
+}
+
+SELECT e.event_id, e.product_sk
+FROM ${ref('fct_events')} e
+LEFT JOIN ${ref('dim_products')} p ON e.product_sk = p.product_sk
+WHERE e.product_sk IS NOT NULL
+  AND p.product_sk IS NULL

@@ -1,0 +1,13 @@
+config {
+  type: "assertion",
+  description: "Checks every event_date in fct_events exists in dim_dates. Catches events with dates outside the 2018-2030 date spine range which would cause silent null joins in BI tools.",
+  tags: ["mart"]
+}
+
+SELECT
+  e.event_id,
+  e.event_date
+FROM ${ref('fct_events')} e
+LEFT JOIN ${ref('dim_dates')} d
+  ON e.event_date = d.date_day
+WHERE d.date_day IS NULL

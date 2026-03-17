@@ -19,7 +19,6 @@ config {
     sold_at: "Timestamp when the inventory item was sold. Unreliable in source data - often null",
     distribution_center_id: "Foreign key to stg_distribution_centers. Distribution center that fulfilled the item",
     gross_profit: "Sale price minus cost. Revenue minus direct cost for this item",
-    gross_margin: "Gross profit divided by sale price. Proportion of revenue retained after direct costs",
     is_completed: "True if the order item status is completed",
     is_cancelled: "True if the order item status is cancelled",
     is_returned: "True if the order item status is returned",
@@ -65,7 +64,25 @@ joined AS (
     inv.sold_at,
     inv.distribution_center_id,
     ROUND(oi.sale_price - inv.cost, 2)                                AS gross_profit,
-    ROUND((oi.sale_price - inv.cost) / NULLIF(oi.sale_price, 0), 4)  AS gross_margin
+
+    -- Fulfilment timing
+    CASE
+      WHEN oi.shipped_at IS NOT NULL AND oi.created_at IS NOT NULL
+      THEN TIMESTAMP_DIFF(oi.shipped_at, oi.created_at, HOUR)
+    END AS hours_to_ship,
+    CASE
+      WHEN oi.delivered_at IS NOT NULL AND oi.shipped_at IS NOT NULL
+      THEN TIMESTAMP_DIFF(oi.delivered_at, oi.shipped_at, HOUR)
+    END AS hours_to_deliver,
+    CASE
+      WHEN oi.delivered_at IS NOT NULL AND oi.created_at IS NOT NULL
+      THEN TIMESTAMP_DIFF(oi.delivered_at, oi.created_at, HOUR)
+    END AS hours_created_to_delivered,
+    CASE
+      WHEN oi.returned_at IS NOT NULL AND oi.delivered_at IS NOT NULL
+      THEN TIMESTAMP_DIFF(oi.returned_at, oi.delivered_at, DAY)
+    END AS days_to_return
+
   FROM order_items oi
   LEFT JOIN ${ref('stg_inventory_items')} inv
     ON oi.inventory_item_id = inv.inventory_item_id

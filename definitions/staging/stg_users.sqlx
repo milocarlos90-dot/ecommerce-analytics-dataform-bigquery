@@ -18,7 +18,7 @@ config {
     longitude: "Geographic longitude of the user's location.",
     traffic_source: "Marketing channel through which the user was acquired.",
     created_at: "Timestamp when the user account was created.",
-    customer_geography: "Geographic point representing the user's location."
+    user_geography: "Geographic point representing the user's location."
   },
   assertions: {
     uniqueKey: ["user_id"],
@@ -43,6 +43,6 @@ SELECT
   CAST(longitude AS float64) AS longitude,
   CAST(traffic_source AS string) AS traffic_source,
   CAST(created_at AS timestamp) AS created_at,
-  user_geom AS customer_geography
+  user_geom AS user_geography
 FROM
   ${ref("users")}

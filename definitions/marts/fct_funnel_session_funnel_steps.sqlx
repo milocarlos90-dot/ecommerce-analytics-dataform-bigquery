@@ -1,0 +1,69 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Funnel step fact table. One row per session per funnel step. Exploded from fct_sessions using CROSS JOIN to enable funnel drop-off analysis in BI tools. Six rows per session covering Session, Home, Department, Product, Cart and Purchase steps.",
+  columns: {
+    journey_session_id: "Foreign key to fct_sessions",
+    user_id: "Natural key. Foreign key to dim_users",
+    user_sk: "Surrogate key. Foreign key to dim_users",
+    session_date: "Date of the session. Foreign key to dim_dates",
+    traffic_source: "Acquisition channel of the session",
+    browser: "Browser used for the session",
+    funnel_step: "Name of the funnel step. Session, Home, Department, Product, Cart or Purchase",
+    funnel_order: "Numeric order of the funnel step. 0 to 5",
+    reached_step: "1 if the session reached this funnel step, 0 if not",
+    reached_session_id: "journey_session_id if the step was reached, null if not. Used for counting in BI"
+  },
+  assertions: {
+    nonNull: [
+      "journey_session_id",
+      "funnel_step",
+      "funnel_order",
+      "reached_step"
+    ],
+    rowConditions: [
+      `funnel_order BETWEEN 0 AND 5`,
+      `reached_step IN (0, 1)`,
+      `funnel_step IN ('Session', 'Home', 'Department', 'Product', 'Cart', 'Purchase')`
+    ]
+  },
+  tags: ["mart"]
+}
+
+WITH funnel_steps AS (
+  SELECT
+    s.journey_session_id,
+    s.user_id,
+    s.user_sk,
+    s.session_date,
+    s.traffic_source,
+    s.browser,
+    step.funnel_step,
+    step.funnel_order,
+    step.reached_step
+
+  FROM ${ref('fct_sessions')} s
+  CROSS JOIN UNNEST([
+    STRUCT('Session'    AS funnel_step, 0 AS funnel_order, 1                          AS reached_step),
+    STRUCT('Home'       AS funnel_step, 1 AS funnel_order, CAST(s.has_home AS INT64)       AS reached_step),
+    STRUCT('Department' AS funnel_step, 2 AS funnel_order, CAST(s.has_department AS INT64) AS reached_step),
+    STRUCT('Product'    AS funnel_step, 3 AS funnel_order, CAST(s.has_product AS INT64)    AS reached_step),
+    STRUCT('Cart'       AS funnel_step, 4 AS funnel_order, CAST(s.has_cart AS INT64)       AS reached_step),
+    STRUCT('Purchase'   AS funnel_step, 5 AS funnel_order, CAST(s.has_purchase AS INT64)   AS reached_step)
+  ]) AS step
+)
+
+SELECT
+  journey_session_id,
+  user_id,
+  user_sk,
+  session_date,
+  traffic_source,
+  browser,
+  funnel_step,
+  funnel_order,
+  reached_step,
+  IF(reached_step = 1, journey_session_id, NULL) AS reached_session_id,
+  CURRENT_TIMESTAMP()                            AS updated_at
+
+FROM funnel_steps

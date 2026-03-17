@@ -1,0 +1,36 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Distribution center dimension derived from stg_distribution_centers. One row per distribution center providing location and geographic attributes. Used to analyse fulfilment performance, return rates and shipping patterns by warehouse.",
+  columns: {
+    distribution_center_sk: "Surrogate key for the distribution center dimension. Generated from distribution_center_id using MD5 hash",
+    distribution_center_id: "Natural business key identifying the distribution center in the source system",
+    distribution_center_name: "Name of the distribution center",
+    latitude: "Geographic latitude of the distribution center",
+    longitude: "Geographic longitude of the distribution center",
+    distribution_center_geom: "Geographic point representing the distribution center location"
+  },
+  assertions: {
+    uniqueKey: ["distribution_center_sk"],
+    nonNull: [
+      "distribution_center_sk",
+      "distribution_center_id",
+      "distribution_center_name"
+    ],
+    rowConditions: [
+      `distribution_center_id > 0`,
+      `latitude BETWEEN -90 AND 90`,
+      `longitude BETWEEN -180 AND 180`
+    ]
+  },
+  tags: ["mart"]
+}
+
+SELECT
+  distribution_center_id,
+  TO_HEX(MD5(CAST(distribution_center_id AS STRING))) AS distribution_center_sk,
+  distribution_center_name,
+  distribution_center_latitude                        AS latitude,
+  distribution_center_longitude                       AS longitude,
+  distribution_center_geom
+FROM ${ref('stg_distribution_centers')}

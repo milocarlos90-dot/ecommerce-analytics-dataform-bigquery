@@ -1,0 +1,14 @@
+config {
+  type: "assertion",
+  description: "Checks every non-null user_sk in fct_sessions exists in dim_users. Catches orphaned sessions where the user dimension record is missing.",
+  tags: ["mart"]
+}
+
+SELECT
+  s.journey_session_id,
+  s.user_sk
+FROM ${ref('fct_sessions')} s
+LEFT JOIN ${ref('dim_users')} u
+  ON s.user_sk = u.user_sk
+WHERE s.user_sk IS NOT NULL
+  AND u.user_sk IS NULL

@@ -8,6 +8,7 @@ config {
     first_name: "Cleaned and title-cased first name",
     last_name: "Cleaned and title-cased last name",
     email: "Cleaned and lowercased email address",
+    age: "User's age in years.",
     gender: "Standardised gender label, Male or Female, Unknown if not provided",
     state: "Cleaned and title-cased state or region",
     street_address: "Cleaned street address",
@@ -15,7 +16,8 @@ config {
     city: "Cleaned and title-cased city name",
     country: "Raw country value from staging before standardisation",
     traffic_source: "Lowercased channel through which the user was acquired",
-    country_standardized: "Standardised country name mapped from raw country value"
+    country_standardized: "Standardised country name mapped from raw country value",
+    user_geography: "Geographic point representing the user's location."
   },
   assertions: {
     uniqueKey: ["user_id"],
@@ -32,17 +34,25 @@ WITH
     INITCAP(NULLIF(TRIM(first_name), '')) AS first_name,
     INITCAP(NULLIF(TRIM(last_name), '')) AS last_name,
     LOWER(NULLIF(TRIM(email), '')) AS email,
+    age,
+    CASE
+      WHEN age < 25 THEN '18-24'
+      WHEN age < 35 THEN '25-34'
+      ELSE '35+'
+    END                              AS age_group,
     CASE
       WHEN NULLIF(TRIM(gender), '') = 'M' THEN 'Male'
       WHEN NULLIF(TRIM(gender), '') = 'F' THEN 'Female'
       ELSE 'Unknown'
-  END
-    AS gender,
+    END                              AS gender,
     INITCAP(NULLIF(TRIM(state), '')) AS state,
     NULLIF(TRIM(street_address), '') AS street_address,
     UPPER(NULLIF(TRIM(postal_code), '')) AS postal_code,
     INITCAP(NULLIF(TRIM(city), '')) AS city,
     INITCAP(NULLIF(TRIM(country), '')) AS country,
+    latitude,
+    longitude,
+    user_geography,
     LOWER(NULLIF(TRIM(traffic_source), '')) AS traffic_source
   FROM
     ${ref('stg_users')} ), 

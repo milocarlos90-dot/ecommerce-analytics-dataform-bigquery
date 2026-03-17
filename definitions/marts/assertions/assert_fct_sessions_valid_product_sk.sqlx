@@ -1,0 +1,14 @@
+config {
+  type: "assertion",
+  description: "Checks every non-null product_sk in fct_sessions exists in dim_products. Catches sessions where the product dimension record is missing.",
+  tags: ["mart"]
+}
+
+SELECT
+  s.journey_session_id,
+  s.product_sk
+FROM ${ref('fct_sessions')} s
+LEFT JOIN ${ref('dim_products')} p
+  ON s.product_sk = p.product_sk
+WHERE s.product_sk IS NOT NULL
+  AND p.product_sk IS NULL

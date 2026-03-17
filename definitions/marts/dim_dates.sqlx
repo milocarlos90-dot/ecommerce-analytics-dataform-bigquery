@@ -1,0 +1,81 @@
+config {
+  type: "table",
+  schema: "analytics_mart",
+  description: "Date dimension covering 2018-01-01 to 2030-12-31. One row per calendar day with attributes for reporting and filtering across all fact tables.",
+  columns: {
+    date_day: "Calendar date. Primary key of the date dimension",
+    date_sk: "Surrogate key in YYYYMMDD integer format. Used as FK in fact tables",
+    year: "Calendar year",
+    quarter: "Calendar quarter 1 to 4",
+    month: "Calendar month number 1 to 12",
+    month_name: "Full month name e.g. January",
+    day_of_month: "Day of the month 1 to 31",
+    day_of_week: "Day of the week. 1 = Sunday, 7 = Saturday",
+    day_name: "Full day name e.g. Monday",
+    week_of_year: "Week number within the year",
+    is_weekend: "True if Saturday or Sunday",
+    is_month_start: "True if first day of the month",
+    is_month_end: "True if last day of the month",
+    is_quarter_start: "True if first day of the quarter",
+    is_quarter_end: "True if last day of the quarter",
+    is_year_start: "True if first day of the year",
+    is_year_end: "True if last day of the year",
+    year_month: "Year and month in YYYY-MM format",
+    week_start_date: "Date of the Monday that starts the ISO week",
+    month_start_date: "First day of the month"
+  },
+  assertions: {
+    uniqueKey: ["date_day"],
+    nonNull: [
+      "date_day",
+      "date_sk",
+      "year",
+      "quarter",
+      "month",
+      "day_of_month"
+    ]
+  },
+  tags: ["mart"]
+}
+
+WITH date_spine AS (
+  SELECT date_day
+  FROM UNNEST(
+    GENERATE_DATE_ARRAY('2018-01-01', '2030-12-31', INTERVAL 1 DAY)
+  ) AS date_day
+)
+
+  SELECT
+    -- Primary key
+    date_day,
+    CAST(FORMAT_DATE('%Y%m%d', date_day) AS INT64)        AS date_sk,
+
+    -- Year / Quarter / Month
+    EXTRACT(YEAR FROM date_day)                            AS year,
+    EXTRACT(QUARTER FROM date_day)                         AS quarter,
+    EXTRACT(MONTH FROM date_day)                           AS month,
+    FORMAT_DATE('%B', date_day)                            AS month_name,
+
+    -- Day
+    EXTRACT(DAY FROM date_day)                             AS day_of_month,
+    EXTRACT(DAYOFWEEK FROM date_day)                       AS day_of_week,
+    FORMAT_DATE('%A', date_day)                            AS day_name,
+
+    -- Week
+    EXTRACT(WEEK FROM date_day)                            AS week_of_year,
+
+    -- Flags
+    EXTRACT(DAYOFWEEK FROM date_day) IN (1, 7)             AS is_weekend,
+    DATE_TRUNC(date_day, MONTH) = date_day                 AS is_month_start,
+    LAST_DAY(date_day, MONTH) = date_day                   AS is_month_end,
+    DATE_TRUNC(date_day, QUARTER) = date_day               AS is_quarter_start,
+    LAST_DAY(date_day, QUARTER) = date_day                 AS is_quarter_end,
+    DATE_TRUNC(date_day, YEAR) = date_day                  AS is_year_start,
+    LAST_DAY(date_day, YEAR) = date_day                    AS is_year_end,
+
+    -- Helpers
+    FORMAT_DATE('%Y-%m', date_day)                         AS year_month,
+    DATE_TRUNC(date_day, WEEK(MONDAY))                     AS week_start_date,
+    DATE_TRUNC(date_day, MONTH)                            AS month_start_date
+
+  FROM date_spine
