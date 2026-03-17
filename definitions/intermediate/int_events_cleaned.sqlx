@@ -1,6 +1,6 @@
 config {
   type: "view",
-  schema: "analytics_intermediate",
+  schema: "analytics_intermediate" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
   description: "Cleaned and enriched event data with bot filtering, session timing, URI metadata parsing, event categorisation and anonymous session handling",
   columns: {
     event_id: "Unique identifier for each event",
