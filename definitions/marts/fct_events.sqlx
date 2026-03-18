@@ -2,8 +2,7 @@ config {
   type: "incremental",
   schema: "analytics_mart",
   uniqueKey: ["event_sk"],
-  partitionBy: {
-    column: "event_date",
+  partitionBy: "event_date",
   },
   clusterBy: ["event_type", "event_category","traffic_source"],
   updatePartitionFilter: "event_date >= date_sub(current_date(), interval 3 day)",
