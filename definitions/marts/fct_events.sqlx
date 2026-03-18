@@ -1,6 +1,6 @@
 config {
   type: "incremental",
-  schema: "analytics_mart",
+  schema: "analytics_mart" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
   uniqueKey: ["event_sk"],
   partitionBy: {
     column: "event_date",

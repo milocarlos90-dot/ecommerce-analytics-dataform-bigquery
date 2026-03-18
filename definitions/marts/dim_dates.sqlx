@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: "analytics_mart",
+  schema: "analytics_mart" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
   description: "Date dimension covering 2018-01-01 to 2030-12-31. One row per calendar day with attributes for reporting and filtering across all fact tables.",
   columns: {
     date_day: "Calendar date. Primary key of the date dimension",
