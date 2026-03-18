@@ -1,6 +1,6 @@
 config {
     type: "view",
-    schema: "analytics_intermediate",
+    schema: require("includes/schema").intermediate,
     description: "Order level financial aggregations joining order attributes with item level cost, revenue and margin data from int_order_items_enriched",
     columns: {
         order_id: "Unique identifier for each order",

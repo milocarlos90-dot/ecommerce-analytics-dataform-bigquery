@@ -1,6 +1,6 @@
 config {
   type: "view",
-  schema: "analytics_staging",
+  schema: require("includes/schema").staging,
   description: "Staged inventory items data from TheLook ecommerce. One row per inventory item.",
   columns: {
     inventory_item_id: "Primary key. Unique identifier for each inventory item.",

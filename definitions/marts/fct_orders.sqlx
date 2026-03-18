@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: "analytics_mart",
+  schema: require("includes/schema").mart,
   description: "Order level fact table. One row per order joining order attributes, financial aggregations and customer dimension keys. Primary fact table for revenue, margin and order lifecycle analysis.",
   columns: {
     order_id: "Natural business key. Unique identifier for each order",
