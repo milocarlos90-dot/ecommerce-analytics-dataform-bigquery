@@ -2,9 +2,11 @@ config {
   type: "incremental",
   schema: "analytics_mart",
   uniqueKey: ["session_sk"],
+  bigquery: {
   partitionBy: "session_date",
   clusterBy: ["session_type", "session_outcome","traffic_source"],
   updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
+  },
   description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
   columns: {
     journey_session_id: "Primary key. Unique identifier for each session",
