@@ -1,6 +1,6 @@
 config {
   type: "view",
-  schema: "analytics_staging" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
+  schema: "analytics_staging",
   description: "Staged products data from TheLook ecommerce. One row per product.",
   columns: {
     product_id: "Primary key. Unique identifier for each product.",
