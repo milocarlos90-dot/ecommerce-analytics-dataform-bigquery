@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: require("includes/schema").mart,
+  schema: "analytics_mart",
   description: "Product dimension derived from stg_products. One row per product providing a single analytics-ready record with product attributes, pricing and classification. Serves as the canonical product entity for joining across fact tables.",
   columns: {
     product_sk: "Surrogate key for the product dimension. Generated from product_id using MD5 hash",

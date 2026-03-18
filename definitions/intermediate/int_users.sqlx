@@ -1,6 +1,6 @@
 config {
   type: "view",
-  schema: require("includes/schema").intermediate,
+  schema: "analytics_intermediate",
   description: "Cleaned and standardised user data with country enrichment",
   columns: {
     user_id: "Unique identifier for each user",

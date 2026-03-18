@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: require("includes/schema").mart,
+  schema: "analytics_mart",
   description: "Funnel step fact table. One row per session per funnel step. Exploded from fct_sessions using CROSS JOIN to enable funnel drop-off analysis in BI tools. Six rows per session covering Session, Home, Department, Product, Cart and Purchase steps.",
   columns: {
     journey_session_id: "Foreign key to fct_sessions",

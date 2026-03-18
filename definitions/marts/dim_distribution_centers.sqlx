@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: require("includes/schema").mart,
+  schema: "analytics_mart",
   description: "Distribution center dimension derived from stg_distribution_centers. One row per distribution center providing location and geographic attributes. Used to analyse fulfilment performance, return rates and shipping patterns by warehouse.",
   columns: {
     distribution_center_sk: "Surrogate key for the distribution center dimension. Generated from distribution_center_id using MD5 hash",

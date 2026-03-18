@@ -1,6 +1,6 @@
 config {
   type: "incremental",
-  schema: require("includes/schema").mart,
+  schema: "analytics_mart",
   uniqueKey: ["session_sk"],
   partitionBy: {
     column: "session_date",
