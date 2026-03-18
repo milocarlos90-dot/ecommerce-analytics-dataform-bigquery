@@ -2,12 +2,16 @@ config {
   type: "incremental",
   schema: "analytics_mart",
   uniqueKey: ["event_sk"],
+
   bigquery: {
-  partitionBy: "event_date",
-  clusterBy: ["event_type", "event_category","traffic_source"],
-  updatePartitionFilter: "event_date >= date_sub(current_date(), interval 3 day)",
+    partitionBy: "event_date",
+    clusterBy: ["event_type", "event_category", "traffic_source"]
   },
+
+  updatePartitionFilter: "event_date >= date_sub(current_date(), interval 3 day)",
+
   description: "Event level fact table. One row per web event capturing browsing, cart and conversion behaviour. Joins to dim_users, dim_products and dim_dates for dimensional analysis.",
+
   columns: {
     event_id: "Primary key. Unique identifier for each event",
     event_sk: "Surrogate key generated from event_id using MD5 hash",
@@ -31,6 +35,7 @@ config {
     seconds_since_session_start: "Seconds elapsed since the start of the session",
     seconds_since_previous_event: "Seconds elapsed since the previous event in the session. Null for first event"
   },
+
   assertions: {
     uniqueKey: ["event_sk"],
     nonNull: [
@@ -51,6 +56,7 @@ config {
       `seconds_since_previous_event IS NULL OR seconds_since_previous_event >= 0`
     ]
   },
+
   tags: ["mart"]
 }
 

@@ -42,7 +42,7 @@ WITH funnel_steps AS (
     step.funnel_order,
     step.reached_step
 
-  FROM ${ref('fct_sessions')} s
+  FROM ${ref('fct_sessions_inc')} s
   CROSS JOIN UNNEST([
     STRUCT('Session'    AS funnel_step, 0 AS funnel_order, 1                          AS reached_step),
     STRUCT('Home'       AS funnel_step, 1 AS funnel_order, CAST(s.has_home AS INT64)       AS reached_step),

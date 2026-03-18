@@ -7,7 +7,7 @@ config {
 SELECT
   e.event_id,
   e.event_date
-FROM ${ref('fct_events')} e
+FROM ${ref('fct_events_inc')} e
 LEFT JOIN ${ref('dim_dates')} d
   ON e.event_date = d.date_day
 WHERE d.date_day IS NULL
