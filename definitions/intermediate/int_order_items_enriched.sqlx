@@ -1,6 +1,6 @@
 config {
   type: "view",
-  schema: "analytics_intermediate" + (dataform.projectConfig.vars.env === "prod" ? "" : "_dev"),
+  schema: "analytics_intermediate",
   description: "Enriched order items with inventory cost data, standardised status, gross margin calculations and lifecycle flags",
   columns: {
     order_item_id: "Unique identifier for each order item",
