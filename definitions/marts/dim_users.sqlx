@@ -1,6 +1,6 @@
 config {
   type: "table",
-  schema: require("includes/schema").mart,
+  schema: "analytics_mart",
   description: "user dimension derived from int_users providing a single analytics-ready record per user. Includes identity, demographic, location, geographic and acquisition attributes. Serves as the canonical user entity for joining across fact tables.",
   columns: {
     user_sk: "Surrogate key for the user dimension. Generated from user_id using MD5 hash",
