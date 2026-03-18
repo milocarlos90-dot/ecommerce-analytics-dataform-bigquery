@@ -4,7 +4,6 @@ config {
   uniqueKey: ["session_sk"],
   partitionBy: {
     column: "session_date",
-    granularity: "day"
   },
   clusterBy: ["session_type", "session_outcome","traffic_source"],
   updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
