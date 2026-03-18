@@ -33,4 +33,4 @@ jobs:
           echo '{"projectId":"ecommerce-analytics-dataform","location":"US"}' > .df-credentials.json
 
       - name: Run Dataform
-        run: dataform run --project-dir .
+        run: dataform run --project-dir . --vars=env=prod
