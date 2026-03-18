@@ -2,8 +2,7 @@ config {
   type: "incremental",
   schema: "analytics_mart",
   uniqueKey: ["session_sk"],
-  partitionBy: {
-    column: "session_date",
+    partitionBy: "session_date",
   },
   clusterBy: ["session_type", "session_outcome","traffic_source"],
   updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
