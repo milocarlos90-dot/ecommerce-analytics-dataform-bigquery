@@ -5,7 +5,7 @@ config {
 }
 
 SELECT e.event_id, e.product_sk
-FROM ${ref('fct_events')} e
+FROM ${ref('fct_events_inc')} e
 LEFT JOIN ${ref('dim_products')} p ON e.product_sk = p.product_sk
 WHERE e.product_sk IS NOT NULL
   AND p.product_sk IS NULL

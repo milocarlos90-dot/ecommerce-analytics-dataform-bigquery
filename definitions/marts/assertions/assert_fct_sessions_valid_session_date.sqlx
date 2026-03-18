@@ -7,7 +7,7 @@ config {
 SELECT
   s.journey_session_id,
   s.session_date
-FROM ${ref('fct_sessions')} s
+FROM ${ref('fct_sessions_inc')} s
 LEFT JOIN ${ref('dim_dates')} d
   ON s.session_date = d.date_day
 WHERE d.date_day IS NULL
