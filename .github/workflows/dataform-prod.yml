@@ -2,35 +2,30 @@ name: Dataform Production
 on:
   push:
     branches: [ main ]
-
+  schedule:
+    - cron: '0 7 * * *'
 permissions:
   id-token: write
   contents: read
-
 jobs:
   dataform_run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/899630677037/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-dataform-runner@ecommerce-analytics-dataform.iam.gserviceaccount.com'
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
-
       - name: Create Dataform credentials file
         run: |
           echo '{"projectId":"ecommerce-analytics-dataform","location":"US"}' > .df-credentials.json
-
       - name: Run Dataform
-        run: dataform run --project-dir .
+        run: dataform run --project-dir . --vars=env=prod
