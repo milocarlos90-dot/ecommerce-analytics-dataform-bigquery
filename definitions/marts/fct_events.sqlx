@@ -3,7 +3,6 @@ config {
   schema: "analytics_mart",
   uniqueKey: ["event_sk"],
   partitionBy: "event_date",
-  },
   clusterBy: ["event_type", "event_category","traffic_source"],
   updatePartitionFilter: "event_date >= date_sub(current_date(), interval 3 day)",
   description: "Event level fact table. One row per web event capturing browsing, cart and conversion behaviour. Joins to dim_users, dim_products and dim_dates for dimensional analysis.",
