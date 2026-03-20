@@ -147,13 +147,10 @@ FROM ${ref('int_events_cleaned')}
     WHERE journey_session_id IN (
       SELECT DISTINCT journey_session_id
       FROM ${ref('int_events_cleaned')}
-      WHERE event_date >= date_sub(current_date(), interval 7 day)
+      WHERE event_date >= date_sub(current_date(), interval 1 day)
     )
   `)}
   GROUP BY journey_session_id
-  ${when(incremental(), `
-    HAVING DATE(MIN(event_ts)) >= date_sub(current_date(), interval 7 day)
-  `)}
 ),
 
 session_enriched AS (
