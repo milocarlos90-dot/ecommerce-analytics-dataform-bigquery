@@ -9,7 +9,6 @@ config {
 
   },
 
-  updatePartitionFilter: "session_date >= date_sub(current_date(), interval 7 day)",  
 
   description: "Session level fact table. One row per journey session aggregated from fct_events. Includes session timing, funnel flags, behavioural classification, path analysis and funnel step timing. Joins to dim_users and dim_dates.",
   columns: {
